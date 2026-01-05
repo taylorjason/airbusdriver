@@ -484,12 +484,11 @@
         // Split by the break placeholder to handle each segment
         const segments = content.split(BR_PLACEHOLDER);
         
-        // Clean each segment and filter out empty ones
+        // Clean each segment but keep empty ones (for double breaks)
         const cleanedSegments = segments
-          .map((segment) => normalizeWhitespace(segment))
-          .filter((segment) => segment.length > 0);
+          .map((segment) => normalizeWhitespace(segment));
         
-        // Rejoin with newlines
+        // Rejoin with newlines, preserving empty segments for double breaks
         content = cleanedSegments.join("\n").trim();
 
         if (!content) {
@@ -623,13 +622,16 @@
       modalMetaEl.textContent = formatDate(entry.date, entry.dateText);
       // Clear previous content
       modalBodyEl.textContent = "";
-      // Add content with preserved newlines
+      // Add content with preserved newlines (including empty lines for double breaks)
       const lines = entry.content.split("\n");
       lines.forEach((line, index) => {
         if (index > 0) {
           modalBodyEl.appendChild(document.createElement("br"));
         }
-        modalBodyEl.appendChild(document.createTextNode(line));
+        // Add text node even if line is empty (for double <br> support)
+        if (line.length > 0) {
+          modalBodyEl.appendChild(document.createTextNode(line));
+        }
       });
       entryModalEl.classList.add("is-open");
       entryModalEl.setAttribute("aria-hidden", "false");
