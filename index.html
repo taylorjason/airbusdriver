@@ -108,6 +108,14 @@
       resize: vertical;
     }
 
+    .manual-input input[type="url"] {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+      width: 100%;
+    }
+
     button {
       border: none;
       background: var(--accent);
@@ -232,6 +240,18 @@
     </section>
     <section class="manual-input">
       <div class="control-group">
+        <label for="sourceUrl">Fetch HTML from a URL (optional)</label>
+        <input
+          type="url"
+          id="sourceUrl"
+          placeholder="http://www.airbusdriver.net/airbus_CQT_Intel.htm"
+        />
+        <small class="status">If the request is blocked by CORS, download the HTML and paste it below.</small>
+      </div>
+      <div class="actions">
+        <button id="fetchUrl" class="secondary">Fetch URL</button>
+      </div>
+      <div class="control-group">
         <label for="manualHtml">Paste HTML from the target page</label>
         <textarea id="manualHtml" placeholder="Paste the HTML source for http://www.airbusdriver.net/airbus_CQT_Intel.htm"></textarea>
       </div>
@@ -251,6 +271,8 @@
     const endDateEl = document.getElementById("endDate");
     const applyFiltersBtn = document.getElementById("applyFilters");
     const resetFiltersBtn = document.getElementById("resetFilters");
+    const fetchUrlBtn = document.getElementById("fetchUrl");
+    const sourceUrlEl = document.getElementById("sourceUrl");
     const parseHtmlBtn = document.getElementById("parseHtml");
     const manualHtmlEl = document.getElementById("manualHtml");
 
@@ -354,6 +376,14 @@
     const parseEntriesFromHtml = (html) => {
       const doc = new DOMParser().parseFromString(html, "text/html");
       return getEntriesFromDocument(doc);
+    };
+
+    const fetchHtmlFromUrl = async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch (${response.status})`);
+      }
+      return response.text();
     };
 
     const isWithinRange = (entry) => {
@@ -462,6 +492,24 @@
       startDateEl.value = "";
       endDateEl.value = "";
       renderEntries();
+    });
+    fetchUrlBtn.addEventListener("click", async () => {
+      const url = sourceUrlEl.value.trim();
+      if (!url) {
+        statusEl.textContent = "Enter a URL to fetch.";
+        return;
+      }
+      statusEl.textContent = "Fetching HTML…";
+      try {
+        const html = await fetchHtmlFromUrl(url);
+        manualHtmlEl.value = html;
+        allEntries = parseEntriesFromHtml(html);
+        renderEntries();
+      } catch (error) {
+        statusEl.textContent =
+          "Unable to fetch the URL. Paste the HTML source instead.";
+        console.error(error);
+      }
     });
     parseHtmlBtn.addEventListener("click", () => {
       const html = manualHtmlEl.value.trim();
