@@ -609,6 +609,14 @@
       expandBtn.textContent = "View full report";
       expandBtn.addEventListener("click", () => openModal(entry));
       textWrap.appendChild(expandBtn);
+      // Make entire card clickable to open modal
+card.addEventListener("click", (e) => {
+  // Don't trigger if clicking the button (it has its own handler)
+  if (e.target !== expandBtn) {
+    openModal(entry);
+  }
+});
+card.style.cursor = "pointer";
 
       card.appendChild(tag);
       card.appendChild(title);
