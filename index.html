@@ -675,35 +675,30 @@ card.style.cursor = "pointer";
       endDateEl.value = "";
       renderEntries();
     });
-    fetchUrlBtn.addEventListener("click", async () => {
-      const url = sourceUrlEl.value.trim();
-      if (!url) {
+    const fetchAndLoad = async (url) => {
+      const trimmed = url ? url.trim() : "";
+      if (!trimmed) {
         statusEl.textContent = "Enter a URL to fetch.";
         return;
       }
       statusEl.textContent = "Fetching HTML…";
       try {
-        const html = await fetchHtmlFromUrl(url);
+        const html = await fetchHtmlFromUrl(trimmed);
         manualHtmlEl.value = html;
         allEntries = parseEntriesFromHtml(html);
         renderEntries();
+        return;
       } catch (error) {
-        statusEl.textContent = `${describeFetchError(
-          error,
-          url
-        )} Attempting proxy fetch…`;
+        statusEl.textContent = `${describeFetchError(error, trimmed)} Attempting proxy fetch…`;
         console.error(error);
         try {
-          const html = await fetchWithProxy(url);
+          const html = await fetchWithProxy(trimmed);
           manualHtmlEl.value = html;
           allEntries = parseEntriesFromHtml(html);
           renderEntries();
           return;
         } catch (proxyError) {
-          statusEl.textContent = `${describeFetchError(
-            proxyError,
-            buildProxyUrl(proxyUrlEl.value, url) || "proxy URL"
-          )} Attempting fallback HTML source…`;
+          statusEl.textContent = `${describeFetchError(proxyError, buildProxyUrl(PROXY_URL, trimmed) || "proxy URL")} Attempting fallback HTML source…`;
           console.error(proxyError);
         }
         try {
@@ -712,12 +707,25 @@ card.style.cursor = "pointer";
           allEntries = parseEntriesFromHtml(html);
           renderEntries();
         } catch (fallbackError) {
-          statusEl.textContent = `${describeFetchError(
-            fallbackError,
-            FALLBACK_HTML_URL
-          )} Paste the HTML source instead.`;
+          statusEl.textContent = `${describeFetchError(fallbackError, FALLBACK_HTML_URL)} Paste the HTML source instead.`;
           console.error(fallbackError);
         }
+      }
+    };
+
+    fetchUrlBtn.addEventListener("click", async () => {
+      await fetchAndLoad(sourceUrlEl.value);
+    });
+
+    // Auto-fetch on page load using the configured source URL
+    window.addEventListener("load", () => {
+      try {
+        const url = sourceUrlEl && sourceUrlEl.value ? sourceUrlEl.value.trim() : "";
+        if (url) {
+          fetchAndLoad(url);
+        }
+      } catch (e) {
+        console.error("Auto-fetch failed:", e);
       }
     });
     parseHtmlBtn.addEventListener("click", () => {
