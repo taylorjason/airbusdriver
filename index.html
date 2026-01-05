@@ -283,22 +283,34 @@
     const normalizeWhitespace = (value) =>
       value.replace(/\s+/g, " ").trim();
 
+    const cleanDateText = (text) =>
+      text
+        .replace(/\([^)]*\)/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
     const parseDate = (text) => {
       if (!text) {
         return null;
       }
 
-      const cleaned = text.replace(/[^0-9/.-]/g, "").trim();
-      if (!cleaned) {
-        return null;
-      }
-
-      let parsed = new Date(cleaned);
+      const cleanedText = cleanDateText(text);
+      let parsed = new Date(cleanedText);
       if (!Number.isNaN(parsed.getTime())) {
         return parsed;
       }
 
-      const match = cleaned.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+      const numericOnly = cleanedText.replace(/[^0-9/.-]/g, "").trim();
+      if (!numericOnly) {
+        return null;
+      }
+
+      parsed = new Date(numericOnly);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+
+      const match = numericOnly.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
       if (match) {
         const month = Number(match[1]);
         const day = Number(match[2]);
@@ -312,7 +324,7 @@
         }
       }
 
-      const monthYear = cleaned.match(/(\d{1,2})[\/.-](\d{4})/);
+      const monthYear = numericOnly.match(/(\d{1,2})[\/.-](\d{4})/);
       if (monthYear) {
         const month = Number(monthYear[1]);
         const year = Number(monthYear[2]);
