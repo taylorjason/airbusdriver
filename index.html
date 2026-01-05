@@ -403,6 +403,9 @@
       return `Unable to fetch ${url}. ${reason}. This is often caused by CORS or a blocked origin.`;
     };
 
+    const FALLBACK_HTML_URL =
+      "https://gist.github.com/taylorjason/e9ffe06599e207d47c749fc1e317fd2d";
+
     const isWithinRange = (entry) => {
       const startValue = startDateEl.value ? new Date(startDateEl.value) : null;
       const endValue = endDateEl.value ? new Date(endDateEl.value) : null;
@@ -523,8 +526,23 @@
         allEntries = parseEntriesFromHtml(html);
         renderEntries();
       } catch (error) {
-        statusEl.textContent = describeFetchError(error, url);
+        statusEl.textContent = `${describeFetchError(
+          error,
+          url
+        )} Attempting fallback HTML source…`;
         console.error(error);
+        try {
+          const html = await fetchHtmlFromUrl(FALLBACK_HTML_URL);
+          manualHtmlEl.value = html;
+          allEntries = parseEntriesFromHtml(html);
+          renderEntries();
+        } catch (fallbackError) {
+          statusEl.textContent = `${describeFetchError(
+            fallbackError,
+            FALLBACK_HTML_URL
+          )} Paste the HTML source instead.`;
+          console.error(fallbackError);
+        }
       }
     });
     parseHtmlBtn.addEventListener("click", () => {
