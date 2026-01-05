@@ -523,8 +523,7 @@
       return `Unable to fetch ${url}. ${reason}. This is often caused by CORS or a blocked origin.`;
     };
 
-    const FALLBACK_HTML_URL =
-      "https://gist.githubusercontent.com/taylorjason/e9ffe06599e207d47c749fc1e317fd2d/raw";
+    // Fallback removed — proxy will be used for all fetches
 
     const buildProxyUrl = (proxyBase, targetUrl) => {
       const trimmed = proxyBase.trim();
@@ -698,17 +697,8 @@ card.style.cursor = "pointer";
           renderEntries();
           return;
         } catch (proxyError) {
-          statusEl.textContent = `${describeFetchError(proxyError, buildProxyUrl(PROXY_URL, trimmed) || "proxy URL")} Attempting fallback HTML source…`;
+          statusEl.textContent = `${describeFetchError(proxyError, buildProxyUrl(PROXY_URL, trimmed) || "proxy URL")} Paste the HTML source instead.`;
           console.error(proxyError);
-        }
-        try {
-          const html = await fetchHtmlFromUrl(FALLBACK_HTML_URL);
-          manualHtmlEl.value = html;
-          allEntries = parseEntriesFromHtml(html);
-          renderEntries();
-        } catch (fallbackError) {
-          statusEl.textContent = `${describeFetchError(fallbackError, FALLBACK_HTML_URL)} Paste the HTML source instead.`;
-          console.error(fallbackError);
         }
       }
     };
