@@ -9,3 +9,4 @@
 - Improve date parsing to handle month-name formats in strong elements.
 - Expand URL fetch error messaging with detailed failure reasons.
 - Fallback to the raw gist HTML source when URL fetching fails.
+- Add Cloudflare Worker proxy support and provide a worker script to bypass CORS blocks.

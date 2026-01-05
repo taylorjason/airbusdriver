@@ -248,6 +248,15 @@
         />
         <small class="status">If the request is blocked by CORS, download the HTML and paste it below.</small>
       </div>
+      <div class="control-group">
+        <label for="proxyUrl">Cloudflare Worker proxy URL (recommended)</label>
+        <input
+          type="url"
+          id="proxyUrl"
+          placeholder="https://your-worker.your-subdomain.workers.dev?url="
+        />
+        <small class="status">Deploy the worker in cloudflare-worker.js and paste its URL here.</small>
+      </div>
       <div class="actions">
         <button id="fetchUrl" class="secondary">Fetch URL</button>
       </div>
@@ -273,6 +282,7 @@
     const resetFiltersBtn = document.getElementById("resetFilters");
     const fetchUrlBtn = document.getElementById("fetchUrl");
     const sourceUrlEl = document.getElementById("sourceUrl");
+    const proxyUrlEl = document.getElementById("proxyUrl");
     const parseHtmlBtn = document.getElementById("parseHtml");
     const manualHtmlEl = document.getElementById("manualHtml");
 
@@ -406,6 +416,25 @@
     const FALLBACK_HTML_URL =
       "https://gist.githubusercontent.com/taylorjason/e9ffe06599e207d47c749fc1e317fd2d/raw";
 
+    const buildProxyUrl = (proxyBase, targetUrl) => {
+      const trimmed = proxyBase.trim();
+      if (!trimmed) {
+        return null;
+      }
+      if (trimmed.includes("?")) {
+        return `${trimmed}${encodeURIComponent(targetUrl)}`;
+      }
+      return `${trimmed}?url=${encodeURIComponent(targetUrl)}`;
+    };
+
+    const fetchWithProxy = async (targetUrl) => {
+      const proxyUrl = buildProxyUrl(proxyUrlEl.value, targetUrl);
+      if (!proxyUrl) {
+        throw new Error("No proxy URL configured.");
+      }
+      return fetchHtmlFromUrl(proxyUrl);
+    };
+
     const isWithinRange = (entry) => {
       const startValue = startDateEl.value ? new Date(startDateEl.value) : null;
       const endValue = endDateEl.value ? new Date(endDateEl.value) : null;
@@ -529,8 +558,21 @@
         statusEl.textContent = `${describeFetchError(
           error,
           url
-        )} Attempting fallback HTML source…`;
+        )} Attempting proxy fetch…`;
         console.error(error);
+        try {
+          const html = await fetchWithProxy(url);
+          manualHtmlEl.value = html;
+          allEntries = parseEntriesFromHtml(html);
+          renderEntries();
+          return;
+        } catch (proxyError) {
+          statusEl.textContent = `${describeFetchError(
+            proxyError,
+            buildProxyUrl(proxyUrlEl.value, url) || "proxy URL"
+          )} Attempting fallback HTML source…`;
+          console.error(proxyError);
+        }
         try {
           const html = await fetchHtmlFromUrl(FALLBACK_HTML_URL);
           manualHtmlEl.value = html;
