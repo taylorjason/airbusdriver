@@ -468,8 +468,29 @@
           return;
         }
 
-        const rawText = normalizeWhitespace(row.textContent);
-        const content = rawText.replace(dateText, "").trim();
+        // Extract content preserving <br> as newlines
+        let content = row.innerHTML;
+        // Remove the strong element from the content
+        const strongHtml = strong.outerHTML;
+        content = content.replace(strongHtml, "").trim();
+        
+        // Use a placeholder for <br> tags to preserve them
+        const BR_PLACEHOLDER = "|||BREAK|||";
+        content = content.replace(/<br\s*\/?>/gi, BR_PLACEHOLDER);
+        
+        // Remove all remaining HTML tags
+        content = content.replace(/<[^>]*>/g, "");
+        
+        // Split by the break placeholder to handle each segment
+        const segments = content.split(BR_PLACEHOLDER);
+        
+        // Clean each segment and filter out empty ones
+        const cleanedSegments = segments
+          .map((segment) => normalizeWhitespace(segment))
+          .filter((segment) => segment.length > 0);
+        
+        // Rejoin with newlines
+        content = cleanedSegments.join("\n").trim();
 
         if (!content) {
           return;
@@ -571,11 +592,13 @@
       const maxLength = 260;
 
       const updateText = () => {
-        if (fullText.length <= maxLength) {
-          paragraph.textContent = fullText;
+        // Get first line only for preview
+        const firstLine = fullText.split("\n")[0];
+        if (firstLine.length <= maxLength) {
+          paragraph.textContent = firstLine;
           return;
         }
-        paragraph.textContent = `${fullText.slice(0, maxLength).trim()}…`;
+        paragraph.textContent = `${firstLine.slice(0, maxLength).trim()}…`;
       };
 
       updateText();
@@ -598,7 +621,16 @@
     const openModal = (entry) => {
       modalTitleEl.textContent = entry.dateText || "Full entry";
       modalMetaEl.textContent = formatDate(entry.date, entry.dateText);
-      modalBodyEl.textContent = entry.content;
+      // Clear previous content
+      modalBodyEl.textContent = "";
+      // Add content with preserved newlines
+      const lines = entry.content.split("\n");
+      lines.forEach((line, index) => {
+        if (index > 0) {
+          modalBodyEl.appendChild(document.createElement("br"));
+        }
+        modalBodyEl.appendChild(document.createTextNode(line));
+      });
       entryModalEl.classList.add("is-open");
       entryModalEl.setAttribute("aria-hidden", "false");
     };
