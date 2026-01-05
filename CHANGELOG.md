@@ -8,4 +8,4 @@
 - Add a URL fetch input to attempt loading HTML directly before pasting.
 - Improve date parsing to handle month-name formats in strong elements.
 - Expand URL fetch error messaging with detailed failure reasons.
-- Fallback to a gist-hosted HTML source when URL fetching fails.
+- Fallback to the raw gist HTML source when URL fetching fails.
