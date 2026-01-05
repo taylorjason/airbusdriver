@@ -195,6 +195,75 @@
       padding: 0;
     }
 
+    .modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.55);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 20;
+    }
+
+    .modal.is-open {
+      display: flex;
+    }
+
+    .modal-content {
+      background: var(--card);
+      border-radius: 18px;
+      max-width: 920px;
+      width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 24px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: #0f172a;
+    }
+
+    .modal-body {
+      padding: 0 24px 24px;
+      overflow-y: auto;
+    }
+
+    .modal-body p {
+      white-space: pre-wrap;
+      line-height: 1.65;
+      color: #1e293b;
+    }
+
+    .modal-close {
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.2rem;
+      padding: 0;
+    }
+
+    .modal-meta {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
     .empty {
       padding: 40px;
       text-align: center;
@@ -274,6 +343,23 @@
     <section class="cards" id="cards"></section>
   </main>
 
+  <div class="modal" id="entryModal" aria-hidden="true">
+    <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <div class="modal-header">
+        <div>
+          <h2 id="modalTitle">Entry details</h2>
+          <div class="modal-meta" id="modalMeta"></div>
+        </div>
+        <button class="modal-close" id="closeModal" type="button" aria-label="Close full entry">
+          ✕
+        </button>
+      </div>
+      <div class="modal-body">
+        <p id="modalBody"></p>
+      </div>
+    </div>
+  </div>
+
   <script>
     const statusEl = document.getElementById("status");
     const cardsEl = document.getElementById("cards");
@@ -286,6 +372,11 @@
     const proxyUrlEl = document.getElementById("proxyUrl");
     const parseHtmlBtn = document.getElementById("parseHtml");
     const manualHtmlEl = document.getElementById("manualHtml");
+    const entryModalEl = document.getElementById("entryModal");
+    const closeModalBtn = document.getElementById("closeModal");
+    const modalTitleEl = document.getElementById("modalTitle");
+    const modalMetaEl = document.getElementById("modalMeta");
+    const modalBodyEl = document.getElementById("modalBody");
 
     let allEntries = [];
 
@@ -483,39 +574,44 @@
       const paragraph = document.createElement("p");
       const fullText = entry.content;
       const maxLength = 260;
-      let expanded = false;
 
       const updateText = () => {
         if (fullText.length <= maxLength) {
           paragraph.textContent = fullText;
           return;
         }
-        paragraph.textContent = expanded
-          ? fullText
-          : `${fullText.slice(0, maxLength).trim()}…`;
+        paragraph.textContent = `${fullText.slice(0, maxLength).trim()}…`;
       };
 
       updateText();
 
       textWrap.appendChild(paragraph);
 
-      if (fullText.length > maxLength) {
-        const toggleBtn = document.createElement("button");
-        toggleBtn.type = "button";
-        toggleBtn.textContent = "Read more";
-        toggleBtn.addEventListener("click", () => {
-          expanded = !expanded;
-          updateText();
-          toggleBtn.textContent = expanded ? "Show less" : "Read more";
-        });
-        textWrap.appendChild(toggleBtn);
-      }
+      const expandBtn = document.createElement("button");
+      expandBtn.type = "button";
+      expandBtn.textContent = "View full report";
+      expandBtn.addEventListener("click", () => openModal(entry));
+      textWrap.appendChild(expandBtn);
 
       card.appendChild(tag);
       card.appendChild(time);
+      card.appendChild(title);
       card.appendChild(textWrap);
 
       return card;
+    };
+
+    const openModal = (entry) => {
+      modalTitleEl.textContent = entry.dateText || "Full entry";
+      modalMetaEl.textContent = formatDate(entry.date, entry.dateText);
+      modalBodyEl.textContent = entry.content;
+      entryModalEl.classList.add("is-open");
+      entryModalEl.setAttribute("aria-hidden", "false");
+    };
+
+    const closeModal = () => {
+      entryModalEl.classList.remove("is-open");
+      entryModalEl.setAttribute("aria-hidden", "true");
     };
 
     const renderEntries = () => {
@@ -596,6 +692,17 @@
       }
       allEntries = parseEntriesFromHtml(html);
       renderEntries();
+    });
+    closeModalBtn.addEventListener("click", closeModal);
+    entryModalEl.addEventListener("click", (event) => {
+      if (event.target === entryModalEl) {
+        closeModal();
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && entryModalEl.classList.contains("is-open")) {
+        closeModal();
+      }
     });
   </script>
 </body>

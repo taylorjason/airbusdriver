@@ -11,3 +11,4 @@
 - Fallback to the raw gist HTML source when URL fetching fails.
 - Add Cloudflare Worker proxy support and provide a worker script to bypass CORS blocks.
 - Pre-fill the proxy URL input with the provided Cloudflare Worker endpoint.
+- Add a full-screen modal view for long entries to handle 6000+ character reports.
