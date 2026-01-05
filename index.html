@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CQ Line Pilot Comments</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #1b1f2a;
+      --muted: #5d657a;
+      --accent: #2f6fed;
+      --border: #e2e6f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Inter", "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    header {
+      padding: 32px 24px 12px;
+      background: linear-gradient(120deg, #1d4ed8, #3b82f6);
+      color: #fff;
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 2vw, 2.2rem);
+    }
+
+    header p {
+      margin: 0;
+      opacity: 0.9;
+    }
+
+    main {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: end;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-top: -40px;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+    }
+
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 200px;
+      flex: 1;
+    }
+
+    .control-group label {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .control-group input {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .manual-input {
+      margin-top: 16px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .manual-input textarea {
+      width: 100%;
+      min-height: 160px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      padding: 12px;
+      font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
+      font-size: 0.85rem;
+      resize: vertical;
+    }
+
+    .manual-input input[type="url"] {
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      font-size: 0.95rem;
+      width: 100%;
+    }
+
+    button {
+      border: none;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #e2e8f0;
+      color: #1e293b;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin: 20px 0 12px;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .cards {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+    }
+
+    .card h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: #0f172a;
+    }
+
+    .card time {
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .card p {
+      margin: 0;
+      color: #1e293b;
+      line-height: 1.5;
+    }
+
+    .tag {
+      background: #e0ecff;
+      color: #1d4ed8;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+    }
+
+    .expandable button {
+      align-self: flex-start;
+      background: transparent;
+      color: var(--accent);
+      padding: 0;
+    }
+
+    .empty {
+      padding: 40px;
+      text-align: center;
+      color: var(--muted);
+      border: 2px dashed var(--border);
+      border-radius: 16px;
+    }
+
+    @media (max-width: 600px) {
+      header {
+        padding: 28px 18px 16px;
+      }
+
+      main {
+        padding: 18px;
+      }
+
+      .controls {
+        margin-top: -24px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>CQ Line Pilot Intel</h1>
+    <p>Filter and review the latest CQ line pilot comments in a cleaner, responsive layout.</p>
+  </header>
+  <main>
+    <section class="controls">
+      <div class="control-group">
+        <label for="startDate">Start date</label>
+        <input type="date" id="startDate" />
+      </div>
+      <div class="control-group">
+        <label for="endDate">End date</label>
+        <input type="date" id="endDate" />
+      </div>
+      <div class="actions">
+        <button id="applyFilters">Apply filters</button>
+        <button id="resetFilters" class="secondary">Reset</button>
+      </div>
+    </section>
+    <section class="manual-input">
+      <div class="control-group">
+        <label for="sourceUrl">Fetch HTML from a URL (optional)</label>
+        <input
+          type="url"
+          id="sourceUrl"
+          placeholder="http://www.airbusdriver.net/airbus_CQT_Intel.htm"
+        />
+        <small class="status">If the request is blocked by CORS, download the HTML and paste it below.</small>
+      </div>
+      <div class="control-group">
+        <label for="proxyUrl">Cloudflare Worker proxy URL (recommended)</label>
+        <input
+          type="url"
+          id="proxyUrl"
+          placeholder="https://your-worker.your-subdomain.workers.dev?url="
+          value="https://snowy-king-2ff2.phantomworx.workers.dev/"
+        />
+        <small class="status">Deploy the worker in cloudflare-worker.js and paste its URL here.</small>
+      </div>
+      <div class="actions">
+        <button id="fetchUrl" class="secondary">Fetch URL</button>
+      </div>
+      <div class="control-group">
+        <label for="manualHtml">Paste HTML from the target page</label>
+        <textarea id="manualHtml" placeholder="Paste the HTML source for http://www.airbusdriver.net/airbus_CQT_Intel.htm"></textarea>
+      </div>
+      <div class="actions">
+        <button id="parseHtml" class="secondary">Parse pasted HTML</button>
+      </div>
+    </section>
+
+    <div class="status" id="status">Paste the HTML source to load entries.</div>
+    <section class="cards" id="cards"></section>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const cardsEl = document.getElementById("cards");
+    const startDateEl = document.getElementById("startDate");
+    const endDateEl = document.getElementById("endDate");
+    const applyFiltersBtn = document.getElementById("applyFilters");
+    const resetFiltersBtn = document.getElementById("resetFilters");
+    const fetchUrlBtn = document.getElementById("fetchUrl");
+    const sourceUrlEl = document.getElementById("sourceUrl");
+    const proxyUrlEl = document.getElementById("proxyUrl");
+    const parseHtmlBtn = document.getElementById("parseHtml");
+    const manualHtmlEl = document.getElementById("manualHtml");
+
+    let allEntries = [];
+
+    const markerText = "Your CQ Line Pilot Comments will be placed here ...";
+
+    const normalizeWhitespace = (value) =>
+      value.replace(/\s+/g, " ").trim();
+
+    const cleanDateText = (text) =>
+      text
+        .replace(/\([^)]*\)/g, "")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const parseDate = (text) => {
+      if (!text) {
+        return null;
+      }
+
+      const cleanedText = cleanDateText(text);
+      let parsed = new Date(cleanedText);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+
+      const numericOnly = cleanedText.replace(/[^0-9/.-]/g, "").trim();
+      if (!numericOnly) {
+        return null;
+      }
+
+      parsed = new Date(numericOnly);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+
+      const match = numericOnly.match(/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{2,4})/);
+      if (match) {
+        const month = Number(match[1]);
+        const day = Number(match[2]);
+        let year = Number(match[3]);
+        if (year < 100) {
+          year += 2000;
+        }
+        parsed = new Date(year, month - 1, day);
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+
+      const monthYear = numericOnly.match(/(\d{1,2})[\/.-](\d{4})/);
+      if (monthYear) {
+        const month = Number(monthYear[1]);
+        const year = Number(monthYear[2]);
+        parsed = new Date(year, month - 1, 1);
+        if (!Number.isNaN(parsed.getTime())) {
+          return parsed;
+        }
+      }
+
+      return null;
+    };
+
+    const formatDate = (date, fallback) => {
+      if (!date) {
+        return fallback || "Unknown date";
+      }
+      return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+      });
+    };
+
+    const getEntriesFromDocument = (doc) => {
+      const rows = Array.from(doc.querySelectorAll("tr"));
+      const markerIndex = rows.findIndex((row) =>
+        normalizeWhitespace(row.textContent).includes(markerText)
+      );
+
+      if (markerIndex === -1) {
+        return [];
+      }
+
+      const entries = [];
+      const dataRows = rows.slice(markerIndex + 1);
+
+      dataRows.forEach((row) => {
+        const strong = row.querySelector("strong");
+        if (!strong) {
+          return;
+        }
+
+        const dateText = normalizeWhitespace(strong.textContent);
+        const rawText = normalizeWhitespace(row.textContent);
+        const content = rawText.replace(dateText, "").trim();
+
+        if (!content) {
+          return;
+        }
+
+        entries.push({
+          dateText,
+          date: parseDate(dateText),
+          content,
+        });
+      });
+
+      return entries;
+    };
+
+    const parseEntriesFromHtml = (html) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      return getEntriesFromDocument(doc);
+    };
+
+    const fetchHtmlFromUrl = async (url) => {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch (${response.status} ${response.statusText})`);
+      }
+      return response.text();
+    };
+
+    const describeFetchError = (error, url) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      return `Unable to fetch ${url}. ${reason}. This is often caused by CORS or a blocked origin.`;
+    };
+
+    const FALLBACK_HTML_URL =
+      "https://gist.githubusercontent.com/taylorjason/e9ffe06599e207d47c749fc1e317fd2d/raw";
+
+    const buildProxyUrl = (proxyBase, targetUrl) => {
+      const trimmed = proxyBase.trim();
+      if (!trimmed) {
+        return null;
+      }
+      if (trimmed.includes("?")) {
+        return `${trimmed}${encodeURIComponent(targetUrl)}`;
+      }
+      return `${trimmed}?url=${encodeURIComponent(targetUrl)}`;
+    };
+
+    const fetchWithProxy = async (targetUrl) => {
+      const proxyUrl = buildProxyUrl(proxyUrlEl.value, targetUrl);
+      if (!proxyUrl) {
+        throw new Error("No proxy URL configured.");
+      }
+      return fetchHtmlFromUrl(proxyUrl);
+    };
+
+    const isWithinRange = (entry) => {
+      const startValue = startDateEl.value ? new Date(startDateEl.value) : null;
+      const endValue = endDateEl.value ? new Date(endDateEl.value) : null;
+
+      if (!startValue && !endValue) {
+        return true;
+      }
+
+      if (!entry.date) {
+        return true;
+      }
+
+      if (startValue && entry.date < startValue) {
+        return false;
+      }
+
+      if (endValue) {
+        const inclusiveEnd = new Date(endValue);
+        inclusiveEnd.setHours(23, 59, 59, 999);
+        if (entry.date > inclusiveEnd) {
+          return false;
+        }
+      }
+
+      return true;
+    };
+
+    const createCard = (entry) => {
+      const card = document.createElement("article");
+      card.className = "card";
+
+      const title = document.createElement("h3");
+      title.textContent = entry.content.split(" ").slice(0, 6).join(" ") + "…";
+
+      const tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = entry.dateText || "Unknown date";
+
+      const time = document.createElement("time");
+      time.textContent = formatDate(entry.date, entry.dateText);
+
+      const textWrap = document.createElement("div");
+      textWrap.className = "expandable";
+
+      const paragraph = document.createElement("p");
+      const fullText = entry.content;
+      const maxLength = 260;
+      let expanded = false;
+
+      const updateText = () => {
+        if (fullText.length <= maxLength) {
+          paragraph.textContent = fullText;
+          return;
+        }
+        paragraph.textContent = expanded
+          ? fullText
+          : `${fullText.slice(0, maxLength).trim()}…`;
+      };
+
+      updateText();
+
+      textWrap.appendChild(paragraph);
+
+      if (fullText.length > maxLength) {
+        const toggleBtn = document.createElement("button");
+        toggleBtn.type = "button";
+        toggleBtn.textContent = "Read more";
+        toggleBtn.addEventListener("click", () => {
+          expanded = !expanded;
+          updateText();
+          toggleBtn.textContent = expanded ? "Show less" : "Read more";
+        });
+        textWrap.appendChild(toggleBtn);
+      }
+
+      card.appendChild(tag);
+      card.appendChild(time);
+      card.appendChild(textWrap);
+
+      return card;
+    };
+
+    const renderEntries = () => {
+      const visibleEntries = allEntries.filter(isWithinRange);
+      statusEl.textContent = `${visibleEntries.length} entries loaded.`;
+
+      if (visibleEntries.length === 0) {
+        cardsEl.innerHTML = `
+          <div class="empty">
+            No entries match the selected date range.
+          </div>
+        `;
+        return;
+      }
+
+      cardsEl.innerHTML = "";
+      visibleEntries.forEach((entry) => {
+        cardsEl.appendChild(createCard(entry));
+      });
+    };
+
+    applyFiltersBtn.addEventListener("click", renderEntries);
+    resetFiltersBtn.addEventListener("click", () => {
+      startDateEl.value = "";
+      endDateEl.value = "";
+      renderEntries();
+    });
+    fetchUrlBtn.addEventListener("click", async () => {
+      const url = sourceUrlEl.value.trim();
+      if (!url) {
+        statusEl.textContent = "Enter a URL to fetch.";
+        return;
+      }
+      statusEl.textContent = "Fetching HTML…";
+      try {
+        const html = await fetchHtmlFromUrl(url);
+        manualHtmlEl.value = html;
+        allEntries = parseEntriesFromHtml(html);
+        renderEntries();
+      } catch (error) {
+        statusEl.textContent = `${describeFetchError(
+          error,
+          url
+        )} Attempting proxy fetch…`;
+        console.error(error);
+        try {
+          const html = await fetchWithProxy(url);
+          manualHtmlEl.value = html;
+          allEntries = parseEntriesFromHtml(html);
+          renderEntries();
+          return;
+        } catch (proxyError) {
+          statusEl.textContent = `${describeFetchError(
+            proxyError,
+            buildProxyUrl(proxyUrlEl.value, url) || "proxy URL"
+          )} Attempting fallback HTML source…`;
+          console.error(proxyError);
+        }
+        try {
+          const html = await fetchHtmlFromUrl(FALLBACK_HTML_URL);
+          manualHtmlEl.value = html;
+          allEntries = parseEntriesFromHtml(html);
+          renderEntries();
+        } catch (fallbackError) {
+          statusEl.textContent = `${describeFetchError(
+            fallbackError,
+            FALLBACK_HTML_URL
+          )} Paste the HTML source instead.`;
+          console.error(fallbackError);
+        }
+      }
+    });
+    parseHtmlBtn.addEventListener("click", () => {
+      const html = manualHtmlEl.value.trim();
+      if (!html) {
+        statusEl.textContent = "Paste the HTML source to parse it.";
+        return;
+      }
+      allEntries = parseEntriesFromHtml(html);
+      renderEntries();
+    });
+  </script>
+</body>
+</html>
