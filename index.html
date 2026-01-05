@@ -393,9 +393,14 @@
     const fetchHtmlFromUrl = async (url) => {
       const response = await fetch(url);
       if (!response.ok) {
-        throw new Error(`Failed to fetch (${response.status})`);
+        throw new Error(`Failed to fetch (${response.status} ${response.statusText})`);
       }
       return response.text();
+    };
+
+    const describeFetchError = (error, url) => {
+      const reason = error instanceof Error ? error.message : String(error);
+      return `Unable to fetch ${url}. ${reason}. This is often caused by CORS or a blocked origin.`;
     };
 
     const isWithinRange = (entry) => {
@@ -518,8 +523,7 @@
         allEntries = parseEntriesFromHtml(html);
         renderEntries();
       } catch (error) {
-        statusEl.textContent =
-          "Unable to fetch the URL. Paste the HTML source instead.";
+        statusEl.textContent = describeFetchError(error, url);
         console.error(error);
       }
     });

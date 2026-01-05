@@ -7,3 +7,4 @@
 - Add manual HTML paste support for environments where remote access is blocked.
 - Add a URL fetch input to attempt loading HTML directly before pasting.
 - Improve date parsing to handle month-name formats in strong elements.
+- Expand URL fetch error messaging with detailed failure reasons.
