@@ -296,11 +296,11 @@
     <section class="controls">
       <div class="control-group">
         <label for="startDate">Start date</label>
-        <input type="date" id="startDate" value="2025-12-01" />
+        <input type="date" id="startDate" />
       </div>
       <div class="control-group">
         <label for="endDate">End date</label>
-        <input type="date" id="endDate" value="2026-01-05" />
+        <input type="date" id="endDate" />
       </div>
       <div class="actions">
         <button id="applyFilters">Apply filters</button>
@@ -362,7 +362,25 @@
     const sourceUrlEl = document.getElementById("sourceUrl");
     const parseHtmlBtn = document.getElementById("parseHtml");
     const manualHtmlEl = document.getElementById("manualHtml");
-    
+
+    // Initialize date inputs with calculated values
+    const initializeDateInputs = () => {
+      const today = new Date();
+
+      // endDate: current date in user's local time
+      const endDate = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+      const endDateString = endDate.toISOString().split('T')[0];
+      endDateEl.value = endDateString;
+
+      // startDate: December 1st of previous year
+      const startDate = new Date(today.getFullYear() - 1, 11, 1); // Month is 0-indexed, so 11 = December
+      const startDateString = startDate.toISOString().split('T')[0];
+      startDateEl.value = startDateString;
+    };
+
+    // Call initialization immediately
+    initializeDateInputs();
+
     const PROXY_URL = "https://snowy-king-2ff2.phantomworx.workers.dev/";
     const entryModalEl = document.getElementById("entryModal");
     const closeModalBtn = document.getElementById("closeModal");
