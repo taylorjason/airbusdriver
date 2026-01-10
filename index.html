@@ -74,7 +74,8 @@
       color: var(--muted);
     }
 
-    .control-group input {
+    .control-group input,
+    .control-group select {
       padding: 10px 12px;
       border-radius: 10px;
       border: 1px solid var(--border);
@@ -332,6 +333,13 @@
         <label for="endDate">End date</label>
         <input type="date" id="endDate" />
       </div>
+      <div class="control-group">
+        <label for="sortOrder">Sort by date</label>
+        <select id="sortOrder">
+          <option value="newest">Newest first</option>
+          <option value="oldest">Oldest first</option>
+        </select>
+      </div>
       <div class="actions">
         <button id="applyFilters">Apply filters</button>
         <button id="resetFilters" class="secondary">Reset</button>
@@ -391,6 +399,7 @@
     const cardsEl = document.getElementById("cards");
     const startDateEl = document.getElementById("startDate");
     const endDateEl = document.getElementById("endDate");
+    const sortOrderEl = document.getElementById("sortOrder");
     const applyFiltersBtn = document.getElementById("applyFilters");
     const resetFiltersBtn = document.getElementById("resetFilters");
     const fetchUrlBtn = document.getElementById("fetchUrl");
@@ -415,6 +424,31 @@
 
     // Call initialization immediately
     initializeDateInputs();
+
+    // Sort preference persistence
+    const SORT_PREFERENCE_KEY = "airbusdriver_sort_preference";
+
+    const loadSortPreference = () => {
+      try {
+        const savedSort = localStorage.getItem(SORT_PREFERENCE_KEY);
+        if (savedSort && sortOrderEl) {
+          sortOrderEl.value = savedSort;
+        }
+      } catch (e) {
+        console.error('[Sort] Failed to load sort preference:', e);
+      }
+    };
+
+    const saveSortPreference = (value) => {
+      try {
+        localStorage.setItem(SORT_PREFERENCE_KEY, value);
+      } catch (e) {
+        console.error('[Sort] Failed to save sort preference:', e);
+      }
+    };
+
+    // Load saved sort preference
+    loadSortPreference();
 
     const PROXY_URL = "https://snowy-king-2ff2.phantomworx.workers.dev/";
     const entryModalEl = document.getElementById("entryModal");
@@ -840,6 +874,23 @@ card.style.cursor = "pointer";
 
     const renderEntries = () => {
       const visibleEntries = allEntries.filter(isWithinRange);
+
+      // Apply sorting
+      const sortOrder = sortOrderEl ? sortOrderEl.value : 'newest';
+      visibleEntries.sort((a, b) => {
+        // Handle entries without dates (should be rare, but just in case)
+        if (!a.date && !b.date) return 0;
+        if (!a.date) return 1; // Put entries without dates at the end
+        if (!b.date) return -1;
+
+        // Sort by date
+        if (sortOrder === 'oldest') {
+          return a.date - b.date; // Ascending (oldest first)
+        } else {
+          return b.date - a.date; // Descending (newest first)
+        }
+      });
+
       statusEl.textContent = `${visibleEntries.length} entries loaded.`;
 
       if (visibleEntries.length === 0) {
@@ -863,6 +914,14 @@ card.style.cursor = "pointer";
       endDateEl.value = "";
       renderEntries();
     });
+
+    // Handle sort order changes
+    if (sortOrderEl) {
+      sortOrderEl.addEventListener("change", () => {
+        saveSortPreference(sortOrderEl.value);
+        renderEntries();
+      });
+    }
     const fetchAndLoad = async (url, forceRefresh = false) => {
       const trimmed = url ? url.trim() : "";
       if (!trimmed) {
