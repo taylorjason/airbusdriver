@@ -64,6 +64,36 @@ export default {
       );
     }
 
+    // Check if client is requesting cache bypass (force refresh)
+    const cacheControl = request.headers.get("Cache-Control");
+    const forceRefresh = cacheControl === "no-cache" || cacheControl === "no-store";
+
+    // Use Cloudflare Cache API
+    const cache = caches.default;
+    const cacheKey = new Request(target.toString(), { method: "GET" });
+
+    // Try to get from cache if not forcing refresh
+    if (!forceRefresh) {
+      const cachedResponse = await cache.match(cacheKey);
+      if (cachedResponse) {
+        // Clone response to add CORS headers
+        const response = new Response(cachedResponse.body, cachedResponse);
+        const newHeaders = new Headers(response.headers);
+
+        // Add CORS headers
+        Object.entries(buildCorsHeaders()).forEach(([key, value]) => {
+          newHeaders.set(key, value);
+        });
+
+        // Keep the X-Cached-At header if it exists
+        return new Response(response.body, {
+          status: response.status,
+          headers: newHeaders,
+        });
+      }
+    }
+
+    // Cache miss or force refresh - fetch from origin
     const upstream = await fetch(target.toString(), {
       headers: {
         "User-Agent":
@@ -72,12 +102,21 @@ export default {
     });
 
     const body = await upstream.text();
-    return new Response(body, {
+    const responseHeaders = {
+      "Content-Type": upstream.headers.get("Content-Type") || "text/html",
+      "Cache-Control": "public, max-age=86400", // 24 hours
+      "X-Cached-At": new Date().toISOString(),
+      ...buildCorsHeaders(),
+    };
+
+    const response = new Response(body, {
       status: upstream.status,
-      headers: {
-        "Content-Type": upstream.headers.get("Content-Type") || "text/html",
-        ...buildCorsHeaders(),
-      },
+      headers: responseHeaders,
     });
+
+    // Store in cache (clone because response body can only be read once)
+    await cache.put(cacheKey, response.clone());
+
+    return response;
   },
 };
