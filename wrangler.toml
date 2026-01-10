@@ -1,0 +1,11 @@
+name = "snowy-king-2ff2"
+main = "workers/index.js"
+compatibility_date = "2024-01-01"
+
+# Account ID will be set via environment variable CLOUDFLARE_ACCOUNT_ID
+# or can be uncommented and set here:
+# account_id = "your-account-id-here"
+
+[env.production]
+name = "snowy-king-2ff2"
+workers_dev = true
