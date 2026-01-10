@@ -102,9 +102,17 @@ export default {
     });
 
     const body = await upstream.text();
+
+    // Only cache successful responses (2xx status codes)
+    // Don't cache errors to avoid turning transient failures into 24-hour outages
+    const shouldCache = upstream.ok; // true for status 200-299
+
     const responseHeaders = {
       "Content-Type": upstream.headers.get("Content-Type") || "text/html",
-      "Cache-Control": "public, max-age=86400", // 24 hours
+      // Only set long cache for successful responses
+      "Cache-Control": shouldCache
+        ? "public, max-age=86400"  // 24 hours for success
+        : "no-cache, no-store",    // Don't cache errors
       "X-Cached-At": new Date().toISOString(),
       ...buildCorsHeaders(),
     };
@@ -114,8 +122,11 @@ export default {
       headers: responseHeaders,
     });
 
-    // Store in cache (clone because response body can only be read once)
-    await cache.put(cacheKey, response.clone());
+    // Only store successful responses in cache
+    // Errors, rate limits, and server failures are not cached
+    if (shouldCache) {
+      await cache.put(cacheKey, response.clone());
+    }
 
     return response;
   },
