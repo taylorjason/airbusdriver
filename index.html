@@ -272,6 +272,36 @@
       border-radius: 16px;
     }
 
+    .cache-info {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .cache-status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .refresh-btn {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      font-weight: 500;
+    }
+
+    .refresh-btn:hover {
+      background: var(--border);
+      color: var(--text);
+    }
+
     @media (max-width: 600px) {
       header {
         padding: 28px 18px 16px;
@@ -332,6 +362,11 @@
 
     <div class="status" id="status">Paste the HTML source to load entries.</div>
     <section class="cards" id="cards"></section>
+
+    <footer class="cache-info">
+      <div id="cacheStatus" class="cache-status"></div>
+      <button id="refreshDataBtn" class="refresh-btn" style="display: none;">Refresh Data</button>
+    </footer>
   </main>
 
   <div class="modal" id="entryModal" aria-hidden="true">
@@ -389,8 +424,138 @@
     const modalBodyEl = document.getElementById("modalBody");
 
     let allEntries = [];
+    let lastCachedTimestamp = null;
 
     const markerText = "Your CQ Line Pilot Comments will be placed here ...";
+
+    // Cache configuration
+    const CACHE_KEY = "airbusdriver_cache";
+    const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
+    const DOUBLE_REFRESH_THRESHOLD_MS = 15 * 1000; // 15 seconds
+
+    // localStorage cache functions
+    const saveToCache = (html, entries, sourceUrl) => {
+      try {
+        const cacheData = {
+          html,
+          entries,
+          timestamp: Date.now(),
+          sourceUrl
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        lastCachedTimestamp = cacheData.timestamp;
+        updateCacheStatus();
+        console.log('[Cache] Data saved to localStorage');
+      } catch (e) {
+        console.error('[Cache] Failed to save to localStorage:', e);
+      }
+    };
+
+    const loadFromCache = () => {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (!cached) {
+          console.log('[Cache] No cached data found');
+          return null;
+        }
+
+        const cacheData = JSON.parse(cached);
+
+        // Validate cache structure
+        if (!cacheData.timestamp || !cacheData.html || !cacheData.entries) {
+          console.log('[Cache] Invalid cache structure');
+          return null;
+        }
+
+        // Check if cache is expired
+        const age = Date.now() - cacheData.timestamp;
+        if (age > CACHE_EXPIRATION_MS) {
+          console.log('[Cache] Cache expired (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
+          return null;
+        }
+
+        // Rehydrate Date objects (JSON.stringify converts them to strings)
+        cacheData.entries = cacheData.entries.map(entry => ({
+          ...entry,
+          date: entry.date ? new Date(entry.date) : null
+        }));
+
+        console.log('[Cache] Using cached data (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
+        lastCachedTimestamp = cacheData.timestamp;
+        return cacheData;
+      } catch (e) {
+        console.error('[Cache] Failed to load from localStorage:', e);
+        return null;
+      }
+    };
+
+    const clearCache = () => {
+      try {
+        localStorage.removeItem(CACHE_KEY);
+        lastCachedTimestamp = null;
+        console.log('[Cache] Cache cleared');
+      } catch (e) {
+        console.error('[Cache] Failed to clear cache:', e);
+      }
+    };
+
+    // sessionStorage double-refresh detection
+    const checkDoubleRefresh = () => {
+      try {
+        const lastFetchTime = sessionStorage.getItem('lastFetchTime');
+        const now = Date.now();
+
+        if (lastFetchTime) {
+          const timeSinceLastFetch = now - parseInt(lastFetchTime, 10);
+          if (timeSinceLastFetch < DOUBLE_REFRESH_THRESHOLD_MS) {
+            console.log('[Cache] Double-refresh detected! Forcing cache bypass.');
+            return true;
+          }
+        }
+
+        sessionStorage.setItem('lastFetchTime', now.toString());
+        return false;
+      } catch (e) {
+        console.error('[Cache] Failed to check double-refresh:', e);
+        return false;
+      }
+    };
+
+    // Update cache status UI
+    const updateCacheStatus = () => {
+      const cacheStatusEl = document.getElementById('cacheStatus');
+      const refreshBtn = document.getElementById('refreshDataBtn');
+
+      if (!cacheStatusEl) return;
+
+      if (lastCachedTimestamp) {
+        const age = Date.now() - lastCachedTimestamp;
+        const hours = Math.floor(age / 1000 / 60 / 60);
+        const minutes = Math.floor((age / 1000 / 60) % 60);
+
+        let ageText;
+        if (hours > 0) {
+          ageText = `${hours} hour${hours !== 1 ? 's' : ''}`;
+          if (minutes > 0) {
+            ageText += ` ${minutes} min`;
+          }
+        } else if (minutes > 0) {
+          ageText = `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+        } else {
+          ageText = 'just now';
+        }
+
+        cacheStatusEl.textContent = `Last updated: ${ageText} ago`;
+        if (refreshBtn) {
+          refreshBtn.style.display = 'inline-block';
+        }
+      } else {
+        cacheStatusEl.textContent = '';
+        if (refreshBtn) {
+          refreshBtn.style.display = 'none';
+        }
+      }
+    };
 
     const normalizeWhitespace = (value) =>
       value.replace(/\s+/g, " ").trim();
@@ -554,12 +719,20 @@
       return `${trimmed}?url=${encodeURIComponent(targetUrl)}`;
     };
 
-    const fetchWithProxy = async (targetUrl) => {
+    const fetchWithProxy = async (targetUrl, forceRefresh = false) => {
       const proxyUrl = buildProxyUrl(PROXY_URL, targetUrl);
       if (!proxyUrl) {
         throw new Error("No proxy URL configured.");
       }
-      return fetchHtmlFromUrl(proxyUrl);
+
+      // Add Cache-Control header for force refresh
+      const headers = forceRefresh ? { 'Cache-Control': 'no-cache' } : {};
+
+      const response = await fetch(proxyUrl, { headers });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch (${response.status} ${response.statusText})`);
+      }
+      return response.text();
     };
 
     const isWithinRange = (entry) => {
@@ -690,26 +863,50 @@ card.style.cursor = "pointer";
       endDateEl.value = "";
       renderEntries();
     });
-    const fetchAndLoad = async (url) => {
+    const fetchAndLoad = async (url, forceRefresh = false) => {
       const trimmed = url ? url.trim() : "";
       if (!trimmed) {
         statusEl.textContent = "Enter a URL to fetch.";
         return;
       }
+
+      // Check for double-refresh (unless already forcing refresh)
+      if (!forceRefresh) {
+        forceRefresh = checkDoubleRefresh();
+      }
+
+      // Try to load from cache if not forcing refresh
+      if (!forceRefresh) {
+        const cached = loadFromCache();
+        if (cached && cached.sourceUrl === trimmed) {
+          console.log('[Cache] Loading from cache');
+          manualHtmlEl.value = cached.html;
+          allEntries = cached.entries;
+          renderEntries();
+          updateCacheStatus();
+          return;
+        }
+      }
+
+      // Cache miss or force refresh - fetch from network
+      console.log('[Cache] Fetching from network' + (forceRefresh ? ' (forced)' : ''));
       statusEl.textContent = "Fetching HTML…";
+
       try {
         const html = await fetchHtmlFromUrl(trimmed);
         manualHtmlEl.value = html;
         allEntries = parseEntriesFromHtml(html);
+        saveToCache(html, allEntries, trimmed);
         renderEntries();
         return;
       } catch (error) {
         statusEl.textContent = `${describeFetchError(error, trimmed)} Attempting proxy fetch…`;
         console.error(error);
         try {
-          const html = await fetchWithProxy(trimmed);
+          const html = await fetchWithProxy(trimmed, forceRefresh);
           manualHtmlEl.value = html;
           allEntries = parseEntriesFromHtml(html);
+          saveToCache(html, allEntries, trimmed);
           renderEntries();
           return;
         } catch (proxyError) {
@@ -754,6 +951,21 @@ card.style.cursor = "pointer";
         closeModal();
       }
     });
+
+    // Refresh button handler
+    const refreshDataBtn = document.getElementById('refreshDataBtn');
+    if (refreshDataBtn) {
+      refreshDataBtn.addEventListener('click', async () => {
+        const url = sourceUrlEl && sourceUrlEl.value ? sourceUrlEl.value.trim() : "";
+        if (url) {
+          clearCache();
+          await fetchAndLoad(url, true); // Force refresh
+        }
+      });
+    }
+
+    // Update cache status every minute
+    setInterval(updateCacheStatus, 60000);
   </script>
 </body>
 </html>
