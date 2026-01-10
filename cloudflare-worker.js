@@ -19,7 +19,7 @@ const ALLOWED_HOSTS = new Set([
 const buildCorsHeaders = () => ({
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type",
+  "Access-Control-Allow-Headers": "Content-Type, Cache-Control",
 });
 
 const errorResponse = (message, status = 400) =>
