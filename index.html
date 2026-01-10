@@ -474,6 +474,12 @@
           return null;
         }
 
+        // Rehydrate Date objects (JSON.stringify converts them to strings)
+        cacheData.entries = cacheData.entries.map(entry => ({
+          ...entry,
+          date: entry.date ? new Date(entry.date) : null
+        }));
+
         console.log('[Cache] Using cached data (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
         lastCachedTimestamp = cacheData.timestamp;
         return cacheData;
