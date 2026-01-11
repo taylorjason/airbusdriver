@@ -16,30 +16,45 @@ const ALLOWED_HOSTS = new Set([
   "www.airbusdriver.net",
 ]);
 
-const buildCorsHeaders = () => ({
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Cache-Control",
-});
+// Allowed origins for CORS (restrict to your domain in production)
+const ALLOWED_ORIGINS = [
+  "https://taylorjason.github.io",
+  "http://localhost:8000",
+  "http://127.0.0.1:8000",
+  "http://localhost:3000",
+];
 
-const errorResponse = (message, status = 400) =>
+const buildCorsHeaders = (origin) => {
+  // Check if origin is allowed
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+
+  return {
+    "Access-Control-Allow-Origin": allowedOrigin,
+    "Access-Control-Allow-Methods": "GET, HEAD, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Cache-Control",
+  };
+};
+
+const errorResponse = (message, status = 400, origin = null) =>
   new Response(
     JSON.stringify({ error: message }, null, 2),
     {
       status,
       headers: {
         "Content-Type": "application/json",
-        ...buildCorsHeaders(),
+        ...buildCorsHeaders(origin),
       },
     }
   );
 
 export default {
   async fetch(request) {
+    const origin = request.headers.get("Origin") || "";
+
     if (request.method === "OPTIONS") {
       return new Response(null, {
         status: 204,
-        headers: buildCorsHeaders(),
+        headers: buildCorsHeaders(origin),
       });
     }
 
@@ -47,20 +62,26 @@ export default {
     const targetUrl = url.searchParams.get("url");
 
     if (!targetUrl) {
-      return errorResponse("Missing required ?url= query parameter.", 400);
+      return errorResponse("Missing required ?url= query parameter.", 400, origin);
     }
 
     let target;
     try {
       target = new URL(targetUrl);
     } catch (error) {
-      return errorResponse(`Invalid target URL: ${targetUrl}`, 400);
+      return errorResponse(`Invalid target URL: ${targetUrl}`, 400, origin);
+    }
+
+    // Validate protocol
+    if (target.protocol !== 'http:' && target.protocol !== 'https:') {
+      return errorResponse(`Invalid protocol: ${target.protocol}. Only HTTP and HTTPS are allowed.`, 400, origin);
     }
 
     if (!ALLOWED_HOSTS.has(target.hostname)) {
       return errorResponse(
         `Target host not allowed: ${target.hostname}. Update ALLOWED_HOSTS in the worker.`,
-        403
+        403,
+        origin
       );
     }
 
@@ -80,8 +101,8 @@ export default {
         const response = new Response(cachedResponse.body, cachedResponse);
         const newHeaders = new Headers(response.headers);
 
-        // Add CORS headers
-        Object.entries(buildCorsHeaders()).forEach(([key, value]) => {
+        // Add CORS headers with origin
+        Object.entries(buildCorsHeaders(origin)).forEach(([key, value]) => {
           newHeaders.set(key, value);
         });
 
@@ -103,6 +124,12 @@ export default {
 
     const body = await upstream.text();
 
+    // Validate response content
+    if (upstream.ok && !body.includes("Your CQ Line Pilot Comments")) {
+      console.error("Invalid response from upstream - expected marker not found");
+      return errorResponse("Invalid response from origin server", 502, origin);
+    }
+
     // Only cache successful responses (2xx status codes)
     // Don't cache errors to avoid turning transient failures into 24-hour outages
     const shouldCache = upstream.ok; // true for status 200-299
@@ -114,7 +141,7 @@ export default {
         ? "public, max-age=86400"  // 24 hours for success
         : "no-cache, no-store",    // Don't cache errors
       "X-Cached-At": new Date().toISOString(),
-      ...buildCorsHeaders(),
+      ...buildCorsHeaders(origin),
     };
 
     const response = new Response(body, {

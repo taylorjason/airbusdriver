@@ -229,7 +229,8 @@ let searchRegexCacheKey = '';
 const markerText = "Your CQ Line Pilot Comments will be placed here ...";
 
 // Cache configuration
-const CACHE_KEY = "airbusdriver_cache";
+const CACHE_VERSION = "v2"; // Increment on breaking changes
+const CACHE_KEY = `airbusdriver_cache_${CACHE_VERSION}`;
 const CACHE_EXPIRATION_MS = 24 * 60 * 60 * 1000; // 24 hours
 const DOUBLE_REFRESH_THRESHOLD_MS = 15 * 1000; // 15 seconds
 
@@ -247,12 +248,57 @@ const saveToCache = (html, entries, sourceUrl) => {
     updateCacheStatus();
     console.log('[Cache] Data saved to localStorage');
   } catch (e) {
-    console.error('[Cache] Failed to save to localStorage:', e);
+    if (e.name === 'QuotaExceededError') {
+      console.warn('[Cache] Storage quota exceeded, clearing old cache');
+      clearCache();
+      // Try again with fresh quota
+      try {
+        const cacheData = {
+          html,
+          entries,
+          timestamp: Date.now(),
+          sourceUrl
+        };
+        localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+        lastCachedTimestamp = cacheData.timestamp;
+        updateCacheStatus();
+        console.log('[Cache] Data saved to localStorage after clearing');
+      } catch (retryError) {
+        console.error('[Cache] Failed to save even after clearing:', retryError);
+      }
+    } else {
+      console.error('[Cache] Failed to save to localStorage:', e);
+    }
   }
+};
+
+const validateCacheData = (data) => {
+  if (!data || typeof data !== 'object') return false;
+  if (!data.timestamp || typeof data.timestamp !== 'number') return false;
+  if (!data.html || typeof data.html !== 'string') return false;
+  if (!data.sourceUrl || typeof data.sourceUrl !== 'string') return false;
+  if (!Array.isArray(data.entries)) return false;
+
+  // Validate entry structure
+  for (const entry of data.entries) {
+    if (!entry || typeof entry !== 'object') return false;
+    if (typeof entry.content !== 'string') return false;
+    if (typeof entry.dateText !== 'string') return false;
+  }
+
+  return true;
 };
 
 const loadFromCache = () => {
   try {
+    // Clean up old cache versions
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('airbusdriver_cache_') && key !== CACHE_KEY) {
+        localStorage.removeItem(key);
+        console.log('[Cache] Removed old cache version:', key);
+      }
+    });
+
     const cached = localStorage.getItem(CACHE_KEY);
     if (!cached) {
       console.log('[Cache] No cached data found');
@@ -261,9 +307,10 @@ const loadFromCache = () => {
 
     const cacheData = JSON.parse(cached);
 
-    // Validate cache structure
-    if (!cacheData.timestamp || !cacheData.html || !cacheData.entries) {
-      console.log('[Cache] Invalid cache structure');
+    // Validate cache structure with strict validation
+    if (!validateCacheData(cacheData)) {
+      console.log('[Cache] Invalid cache structure, clearing cache');
+      clearCache();
       return null;
     }
 
@@ -285,6 +332,7 @@ const loadFromCache = () => {
     return cacheData;
   } catch (e) {
     console.error('[Cache] Failed to load from localStorage:', e);
+    clearCache();
     return null;
   }
 };
@@ -431,19 +479,23 @@ const filterBySearch = (entries, searchTerms) => {
 };
 
 /**
- * Highlight search keywords in text by wrapping them in <mark> tags
- * Uses memoization to avoid recompiling regex on every call
+ * Safely render text with highlighted keywords as DOM nodes
+ * Avoids XSS by creating DOM elements programmatically instead of using innerHTML
  * @param {string} text - The text to highlight
  * @param {Array<{term: string, isExact: boolean}>} searchTerms - Parsed search terms
- * @returns {string} Text with <mark> tags around matched terms
+ * @param {HTMLElement} container - The container element to append to
  */
-const highlightKeywords = (text, searchTerms) => {
-  if (!text || !searchTerms || searchTerms.length === 0) {
-    return text;
+const renderHighlightedText = (text, searchTerms, container) => {
+  if (!text) {
+    return;
+  }
+
+  if (!searchTerms || searchTerms.length === 0) {
+    container.textContent = text;
+    return;
   }
 
   // Create collision-free cache key using JSON serialization
-  // This prevents collisions like "a b" vs "a|b"
   const cacheKey = JSON.stringify(searchTerms);
 
   // Check if regex is already compiled for these terms
@@ -455,8 +507,23 @@ const highlightKeywords = (text, searchTerms) => {
     searchRegexCacheKey = cacheKey;
   }
 
-  // Replace all matches in a single pass using cached regex
-  return text.replace(searchRegexCache, '<mark>$1</mark>');
+  // Split text by matches
+  const parts = text.split(searchRegexCache);
+  const fragment = document.createDocumentFragment();
+
+  parts.forEach((part, index) => {
+    if (index % 2 === 0) {
+      // Non-matched text
+      if (part) fragment.appendChild(document.createTextNode(part));
+    } else {
+      // Matched text - wrap in <mark>
+      const mark = document.createElement('mark');
+      mark.textContent = part;
+      fragment.appendChild(mark);
+    }
+  });
+
+  container.appendChild(fragment);
 };
 
 /**
@@ -775,14 +842,16 @@ const createCard = (entry) => {
   const updateText = () => {
     let text;
 
+    // Clear previous content
+    paragraph.textContent = '';
+
     if (searchTerms.length > 0) {
       // Get context excerpt around search term
       const contextExcerpt = getSearchContext(fullText, searchTerms, 15);
 
       if (contextExcerpt !== null) {
-        // Match found in content - show context with highlighting
-        const highlightedText = highlightKeywords(contextExcerpt, searchTerms);
-        paragraph.innerHTML = highlightedText;
+        // Match found in content - show context with highlighting (XSS-safe)
+        renderHighlightedText(contextExcerpt, searchTerms, paragraph);
       } else {
         // No match in content (match was in dateText only) - show normal preview
         const lines = fullText.split("\n");
@@ -835,20 +904,19 @@ const openModal = (entry) => {
   modalTitleEl.textContent = entry.dateText || "Full entry";
   modalMetaEl.textContent = formatDate(entry.date, entry.dateText);
   // Clear previous content
-  modalBodyEl.innerHTML = "";
+  modalBodyEl.textContent = "";
 
   if (searchTerms.length > 0) {
-    // Highlight keywords in full content
+    // Highlight keywords in full content (XSS-safe)
     const lines = entry.content.split("\n");
     lines.forEach((line, index) => {
       if (index > 0) {
         modalBodyEl.appendChild(document.createElement("br"));
       }
-      // Highlight keywords in each line
+      // Highlight keywords in each line using safe rendering
       if (line.length > 0) {
-        const highlightedLine = highlightKeywords(line, searchTerms);
         const span = document.createElement("span");
-        span.innerHTML = highlightedLine;
+        renderHighlightedText(line, searchTerms, span);
         modalBodyEl.appendChild(span);
       }
     });
