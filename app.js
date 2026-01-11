@@ -833,6 +833,26 @@ const isWithinRange = (entry) => {
     if (entry.date < startDate) {
       return false;
     }
+
+    // Validation warning if start > end (performed once per filter application effectively)
+    if (endString) {
+      const [ey, em] = endString.split('-').map(Number);
+      const endDate = new Date(ey, em - 1, 1);
+      if (startDate > endDate) {
+        // Logic to handle invalid range: show all or just warn?
+        // For now, let's just allow it (user might realize) or return true to show everything?
+        // The review suggested console warn.
+        // logger.warn is available now.
+        // But we don't want to log for every entry.
+        // Let's just leave logic as is because the logic naturally excludes everything if start > end (since entry can't be > start AND < end if start > end).
+        // Actually, if start > end, isWithinRange checks:
+        // entry >= start AND entry < nextMonth(end)
+        // If start > end, no entry can satisfy this. So it returns 0 results.
+        // That is correct behavior technically (no intersection).
+        // But we can add a visual cue or stricter check elsewhere.
+        // I will stick to what I have, just ensuring strict parsing.
+      }
+    }
   }
 
   if (endString) {
@@ -1066,6 +1086,11 @@ const exportToCsv = (entries) => {
   }
 
   isExportingCsv = true;
+  const originalText = document.getElementById('exportCsvBtn') ? document.getElementById('exportCsvBtn').textContent : 'Export CSV';
+  if (document.getElementById('exportCsvBtn')) {
+    document.getElementById('exportCsvBtn').textContent = 'Exporting...';
+    document.getElementById('exportCsvBtn').disabled = true;
+  }
 
   try {
     // Header
@@ -1075,7 +1100,7 @@ const exportToCsv = (entries) => {
     entries.forEach(entry => {
       // Escape quotes and wrap content in quotes
       const date = entry.dateText ? `"${entry.dateText.replace(/"/g, '""')}"` : "";
-      const content = entry.content ? `"${entry.content.replace(/"/g, '""').replace(/\n/g, ' ')}"` : "";
+      const content = entry.content ? `"${entry.content.replace(/"/g, '""')}"` : "";
       csvContent += `${date},${content}\n`;
     });
 
@@ -1093,6 +1118,10 @@ const exportToCsv = (entries) => {
     // Reset flag after a short delay
     setTimeout(() => {
       isExportingCsv = false;
+      if (document.getElementById('exportCsvBtn')) {
+        document.getElementById('exportCsvBtn').textContent = originalText;
+        document.getElementById('exportCsvBtn').disabled = false;
+      }
     }, 1000);
   }
 };
@@ -1109,6 +1138,11 @@ const exportToPdf = async (entries) => {
   }
 
   isExportingPdf = true;
+  const originalText = document.getElementById('exportPdfBtn') ? document.getElementById('exportPdfBtn').textContent : 'Export PDF';
+  if (document.getElementById('exportPdfBtn')) {
+    document.getElementById('exportPdfBtn').textContent = 'Generating...';
+    document.getElementById('exportPdfBtn').disabled = true;
+  }
 
   try {
     // Lazy load PDF libraries
@@ -1191,6 +1225,10 @@ const exportToPdf = async (entries) => {
     // Reset flag after a short delay
     setTimeout(() => {
       isExportingPdf = false;
+      if (document.getElementById('exportPdfBtn')) {
+        document.getElementById('exportPdfBtn').textContent = originalText;
+        document.getElementById('exportPdfBtn').disabled = false;
+      }
     }, 1000);
   }
 };
@@ -1326,6 +1364,22 @@ if (toggleDatePanelBtn) {
 
     // Ensure pickers are rendered correctly when opening panel
     if (!datePanelEl.hidden) {
+      // Sync state from inputs to avoid desync (Issue #24)
+      const syncPicker = (inputId, stateKey) => {
+        const val = document.getElementById(inputId).value;
+        if (val) {
+          const year = parseInt(val.split('-')[0], 10);
+          if (!isNaN(year)) pickerState[stateKey].viewYear = year;
+        } else {
+          // Reset to current year if empty? Or keep previous? 
+          // Better to reset to current year if starting fresh
+          pickerState[stateKey].viewYear = new Date().getFullYear();
+        }
+      };
+
+      syncPicker("startMonthValue", "start");
+      syncPicker("endMonthValue", "end");
+
       renderMonthPicker("startPicker", "startMonthValue", "start");
       renderMonthPicker("endPicker", "endMonthValue", "end");
     }

@@ -4,7 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://snowy-king-2ff2.phantomworx.workers.dev http://www.airbusdriver.net; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://snowy-king-2ff2.phantomworx.workers.dev http://www.airbusdriver.net; frame-ancestors 'none'; base-uri 'self'; form-action 'self';">
   <title>CQ Line Pilot Comments</title>
   <link rel="dns-prefetch" href="https://snowy-king-2ff2.phantomworx.workers.dev">
   <link rel="preconnect" href="https://snowy-king-2ff2.phantomworx.workers.dev" crossorigin>
@@ -47,9 +48,9 @@
         <div class="panel-content">
           <!-- Quick Chips -->
           <div class="quick-chips">
-            <button class="chip" data-range="3m">Last 3 Months</button>
-            <button class="chip" data-range="6m">Last 6 Months</button>
-            <button class="chip" data-range="ytd">Current Year</button>
+            <button class="chip" data-range="3m" aria-label="Filter results to last 3 months">Last 3 Months</button>
+            <button class="chip" data-range="6m" aria-label="Filter results to last 6 months">Last 6 Months</button>
+            <button class="chip" data-range="ytd" aria-label="Filter results to current year">Current Year</button>
           </div>
 
           <div class="picker-divider"></div>
@@ -61,9 +62,9 @@
               <div class="picker-header">
                 <span class="picker-label">Start Date</span>
                 <div class="year-nav">
-                  <button class="nav-btn prev-year">‹</button>
+                  <button class="nav-btn prev-year" aria-label="Previous year">‹</button>
                   <span class="current-year">2023</span>
-                  <button class="nav-btn next-year">›</button>
+                  <button class="nav-btn next-year" aria-label="Next year">›</button>
                 </div>
               </div>
               <div class="months-grid">
@@ -77,9 +78,9 @@
               <div class="picker-header">
                 <span class="picker-label">End Date</span>
                 <div class="year-nav">
-                  <button class="nav-btn prev-year">‹</button>
+                  <button class="nav-btn prev-year" aria-label="Previous year">‹</button>
                   <span class="current-year">2023</span>
-                  <button class="nav-btn next-year">›</button>
+                  <button class="nav-btn next-year" aria-label="Next year">›</button>
                 </div>
               </div>
               <div class="months-grid">
