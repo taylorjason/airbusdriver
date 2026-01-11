@@ -1,14 +1,73 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>CQ Line Pilot Comments</title>
   <link rel="dns-prefetch" href="https://snowy-king-2ff2.phantomworx.workers.dev">
   <link rel="preconnect" href="https://snowy-king-2ff2.phantomworx.workers.dev" crossorigin>
-  <style>:root{color-scheme:light;--bg:#f6f7fb;--card:#fff;--text:#1b1f2a;--muted:#5d657a;--accent:#2f6fed;--border:#e2e6f0;--header-gradient-start:#1d4ed8;--header-gradient-end:#3b82f6}:root[data-theme="dark"]{color-scheme:dark;--bg:#0f172a;--card:#1e293b;--text:#e2e8f0;--muted:#94a3b8;--accent:#3b82f6;--border:#334155;--header-gradient-start:#1e3a8a;--header-gradient-end:#2563eb}*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:var(--bg);color:var(--text)}header{padding:32px 24px 12px;background:linear-gradient(120deg,var(--header-gradient-start),var(--header-gradient-end));color:#fff}header h1{margin:0 0 8px;font-size:clamp(1.6rem,2vw,2.2rem)}header p{margin:0;opacity:.9}main{padding:24px;max-width:1200px;margin:0 auto}</style>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7fb;
+      --card: #fff;
+      --text: #1b1f2a;
+      --muted: #5d657a;
+      --accent: #2f6fed;
+      --border: #e2e6f0;
+      --header-gradient-start: #1d4ed8;
+      --header-gradient-end: #3b82f6
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --border: #334155;
+      --header-gradient-start: #1e3a8a;
+      --header-gradient-end: #2563eb
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    header {
+      padding: 32px 24px 12px;
+      background: linear-gradient(120deg, var(--header-gradient-start), var(--header-gradient-end));
+      color: #fff
+    }
+
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.6rem, 2vw, 2.2rem)
+    }
+
+    header p {
+      margin: 0;
+      opacity: .9
+    }
+
+    main {
+      padding: 24px;
+      max-width: 1200px;
+      margin: 0 auto
+    }
+  </style>
   <link rel="stylesheet" href="styles.css" media="print" onload="this.media='all';this.onload=null;">
 </head>
+
 <body>
   <header>
     <h1>CQ Line Pilot Intel</h1>
@@ -16,52 +75,109 @@
   </header>
   <main>
     <section class="controls">
-      <div class="control-group">
-        <label for="startDate">Start date</label>
-        <input type="date" id="startDate" />
+      <!-- Primary Action Bar -->
+      <div class="action-bar">
+        <div class="sort-group">
+          <select id="sortOrder" class="compact-select">
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+          </select>
+        </div>
+
+        <div class="spacer"></div>
+
+        <button id="toggleDatePanel" class="control-pill" aria-expanded="false">
+          <span class="icon">📅</span>
+          <span class="label">Date</span>
+          <span id="dateBadge" class="badge" style="display: none;">•</span>
+        </button>
+
+        <button id="toggleSearchPanel" class="control-pill" aria-expanded="false">
+          <span class="icon">🔍</span>
+          <span class="label">Search</span>
+          <span id="searchBadge" class="badge" style="display: none;">•</span>
+        </button>
       </div>
-      <div class="control-group">
-        <label for="endDate">End date</label>
-        <input type="date" id="endDate" />
-      </div>
-      <div class="control-group">
-        <label for="sortOrder">Sort by date</label>
-        <select id="sortOrder">
-          <option value="newest">Newest first</option>
-          <option value="oldest">Oldest first</option>
-        </select>
-      </div>
-      <div class="control-group search-group">
-        <label for="searchInput">Search comments</label>
-        <input type="text" id="searchInput" placeholder="Search keywords or &quot;exact phrase&quot;" />
-      </div>
-      <div class="control-group">
-        <label>Search scope</label>
-        <div class="radio-group">
-          <label class="radio-label">
-            <input type="radio" name="searchScope" value="filtered" checked />
-            <span>Filtered comments</span>
-          </label>
-          <label class="radio-label">
-            <input type="radio" name="searchScope" value="all" />
-            <span>All comments</span>
-          </label>
+
+      <!-- Collapsible Panels -->
+      <div id="datePanel" class="panel filter-panel" hidden>
+        <div class="panel-content">
+          <!-- Quick Chips -->
+          <div class="quick-chips">
+            <button class="chip" data-range="3m">Last 3 Months</button>
+            <button class="chip" data-range="6m">Last 6 Months</button>
+            <button class="chip" data-range="ytd">Current Year</button>
+          </div>
+
+          <div class="picker-divider"></div>
+
+          <!-- Custom Month Pickers -->
+          <div class="date-pickers-container">
+            <!-- Start Date Picker -->
+            <div class="month-picker" id="startPicker">
+              <div class="picker-header">
+                <span class="picker-label">Start Date</span>
+                <div class="year-nav">
+                  <button class="nav-btn prev-year">‹</button>
+                  <span class="current-year">2023</span>
+                  <button class="nav-btn next-year">›</button>
+                </div>
+              </div>
+              <div class="months-grid">
+                <!-- Javascript will populate buttons: <button value="0">Jan</button>... -->
+              </div>
+              <input type="hidden" id="startMonthValue"> <!-- YYYY-MM -->
+            </div>
+
+            <!-- End Date Picker -->
+            <div class="month-picker" id="endPicker">
+              <div class="picker-header">
+                <span class="picker-label">End Date</span>
+                <div class="year-nav">
+                  <button class="nav-btn prev-year">‹</button>
+                  <span class="current-year">2023</span>
+                  <button class="nav-btn next-year">›</button>
+                </div>
+              </div>
+              <div class="months-grid">
+                <!-- Javascript will populate buttons -->
+              </div>
+              <input type="hidden" id="endMonthValue"> <!-- YYYY-MM -->
+            </div>
+          </div>
+
+          <div class="actions">
+            <button id="applyDateFilter" class="small-btn">Apply</button>
+            <button id="resetDateFilter" class="small-btn secondary">Clear</button>
+          </div>
         </div>
       </div>
-      <div class="actions">
-        <button id="applyFilters">Apply filters</button>
-        <button id="resetFilters" class="secondary">Reset</button>
+
+      <div id="searchPanel" class="panel search-panel" hidden>
+        <div class="panel-content">
+          <div class="search-row">
+            <input type="text" id="searchInput" placeholder="Search keywords..." />
+            <button id="applySearch" class="small-btn">Go</button>
+            <button id="clearSearch" class="small-btn secondary">Clear</button>
+          </div>
+          <div class="radio-group horizontal">
+            <label class="radio-label">
+              <input type="radio" name="searchScope" value="filtered" checked />
+              <span>Filtered</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="searchScope" value="all" />
+              <span>All</span>
+            </label>
+          </div>
+        </div>
       </div>
     </section>
     <section class="manual-input">
       <div class="control-group">
         <label for="sourceUrl">Fetch HTML from a URL (optional)</label>
-        <input
-          type="url"
-          id="sourceUrl"
-          placeholder="http://www.airbusdriver.net/airbus_CQT_Intel.htm"
-          value="http://www.airbusdriver.net/airbus_CQT_Intel.htm"
-        />
+        <input type="url" id="sourceUrl" placeholder="http://www.airbusdriver.net/airbus_CQT_Intel.htm"
+          value="http://www.airbusdriver.net/airbus_CQT_Intel.htm" />
         <small class="status">If the request is blocked by CORS, download the HTML and paste it below.</small>
       </div>
       <div class="actions">
@@ -69,7 +185,8 @@
       </div>
       <div class="control-group">
         <label for="manualHtml">Paste HTML from the target page</label>
-        <textarea id="manualHtml" placeholder="Paste the HTML source for http://www.airbusdriver.net/airbus_CQT_Intel.htm"></textarea>
+        <textarea id="manualHtml"
+          placeholder="Paste the HTML source for http://www.airbusdriver.net/airbus_CQT_Intel.htm"></textarea>
       </div>
       <div class="actions">
         <button id="parseHtml" class="secondary">Parse pasted HTML</button>
@@ -115,12 +232,14 @@
   </div>
 
   <div class="modal" id="disclaimerModal" aria-hidden="false">
-    <div class="modal-content disclaimer-modal-content" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
+    <div class="modal-content disclaimer-modal-content" role="dialog" aria-modal="true"
+      aria-labelledby="disclaimerTitle">
       <div class="modal-header">
         <h2 id="disclaimerTitle">Welcome</h2>
       </div>
       <div class="modal-body">
-        <p>This site is simply a modern mobile-friendly viewer for the AirBusDriver.net CQ comments. All comments are pulled directly from the original site without modification.</p>
+        <p>This site is simply a modern mobile-friendly viewer for the AirBusDriver.net CQ comments. All comments are
+          pulled directly from the original site without modification.</p>
       </div>
       <div class="modal-footer">
         <button id="disclaimerAccept">I understand</button>
@@ -129,10 +248,10 @@
   </div>
 
   <script type="module">
-    import {onCLS, onFID, onLCP, onFCP, onTTFB} from 'https://unpkg.com/web-vitals@3/dist/web-vitals.js';
+    import { onCLS, onFID, onLCP, onFCP, onTTFB } from 'https://unpkg.com/web-vitals@3/dist/web-vitals.js';
 
     function sendToAnalytics(metric) {
-      const {name, value, rating} = metric;
+      const { name, value, rating } = metric;
       console.log(`[Web Vitals] ${name}: ${value.toFixed(2)}ms (${rating})`);
 
       // Optional: Send to analytics service
@@ -147,4 +266,5 @@
   </script>
   <script src="app.js" defer></script>
 </body>
+
 </html>
