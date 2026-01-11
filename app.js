@@ -67,6 +67,10 @@
     let searchTerms = [];
     let searchScope = 'filtered';
 
+    // Memoization cache for compiled search regex
+    let searchRegexCache = null;
+    let searchRegexCacheKey = '';
+
     const markerText = "Your CQ Line Pilot Comments will be placed here ...";
 
     // Cache configuration
@@ -273,6 +277,7 @@
 
     /**
      * Highlight search keywords in text by wrapping them in <mark> tags
+     * Uses memoization to avoid recompiling regex on every call
      * @param {string} text - The text to highlight
      * @param {Array<{term: string, isExact: boolean}>} searchTerms - Parsed search terms
      * @returns {string} Text with <mark> tags around matched terms
@@ -282,14 +287,20 @@
         return text;
       }
 
-      // Create a combined regex pattern that matches any of the search terms
-      // This prevents the issue where highlighting one term corrupts markup from previous terms
-      const escapedTerms = searchTerms.map(({ term }) => escapeRegex(term));
-      const combinedPattern = escapedTerms.join('|');
-      const regex = new RegExp(`(${combinedPattern})`, 'gi');
+      // Create cache key from search terms
+      const cacheKey = searchTerms.map(({ term }) => term).join('|');
 
-      // Replace all matches in a single pass
-      return text.replace(regex, '<mark>$1</mark>');
+      // Check if regex is already compiled for these terms
+      if (searchRegexCacheKey !== cacheKey) {
+        // Cache miss - compile new regex
+        const escapedTerms = searchTerms.map(({ term }) => escapeRegex(term));
+        const combinedPattern = escapedTerms.join('|');
+        searchRegexCache = new RegExp(`(${combinedPattern})`, 'gi');
+        searchRegexCacheKey = cacheKey;
+      }
+
+      // Replace all matches in a single pass using cached regex
+      return text.replace(searchRegexCache, '<mark>$1</mark>');
     };
 
     /**
@@ -788,6 +799,8 @@ card.style.cursor = "pointer";
       endDateEl.value = "";
       searchInputEl.value = "";
       searchTerms = [];
+      searchRegexCache = null; // Clear memoization cache
+      searchRegexCacheKey = '';
       // Reset search scope to filtered
       searchScopeEls.forEach(radio => {
         if (radio.value === 'filtered') {
