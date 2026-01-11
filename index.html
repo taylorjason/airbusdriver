@@ -256,6 +256,18 @@
       padding: 0;
     }
 
+    .modal-footer {
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .disclaimer-modal-content {
+      max-width: 500px;
+    }
+
     .modal-meta {
       display: flex;
       gap: 12px;
@@ -479,6 +491,20 @@
       </div>
       <div class="modal-body">
         <p id="modalBody"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="disclaimerModal" aria-hidden="false">
+    <div class="modal-content disclaimer-modal-content" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
+      <div class="modal-header">
+        <h2 id="disclaimerTitle">Welcome</h2>
+      </div>
+      <div class="modal-body">
+        <p>This site is simply a modern mobile-friendly viewer for the AirBusDriver.net CQ comments. All comments are pulled directly from the original site without modification.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="disclaimerAccept">I understand</button>
       </div>
     </div>
   </div>
@@ -1422,6 +1448,46 @@ card.style.cursor = "pointer";
 
     // Update cache status every minute
     setInterval(updateCacheStatus, 60000);
+
+    // Disclaimer modal handling
+    const DISCLAIMER_KEY = "airbusdriver_disclaimer_accepted";
+    const disclaimerModalEl = document.getElementById("disclaimerModal");
+    const disclaimerAcceptBtn = document.getElementById("disclaimerAccept");
+
+    const checkAndShowDisclaimer = () => {
+      try {
+        const accepted = localStorage.getItem(DISCLAIMER_KEY);
+        if (!accepted) {
+          // Show the modal
+          disclaimerModalEl.classList.add("is-open");
+          disclaimerModalEl.setAttribute("aria-hidden", "false");
+        } else {
+          // Hide the modal
+          disclaimerModalEl.classList.remove("is-open");
+          disclaimerModalEl.setAttribute("aria-hidden", "true");
+        }
+      } catch (e) {
+        console.error('[Disclaimer] Failed to check disclaimer status:', e);
+      }
+    };
+
+    const closeDisclaimer = () => {
+      try {
+        localStorage.setItem(DISCLAIMER_KEY, "true");
+        disclaimerModalEl.classList.remove("is-open");
+        disclaimerModalEl.setAttribute("aria-hidden", "true");
+      } catch (e) {
+        console.error('[Disclaimer] Failed to save disclaimer acceptance:', e);
+      }
+    };
+
+    // Check on page load
+    checkAndShowDisclaimer();
+
+    // Handle accept button
+    if (disclaimerAcceptBtn) {
+      disclaimerAcceptBtn.addEventListener("click", closeDisclaimer);
+    }
   </script>
 </body>
 </html>
