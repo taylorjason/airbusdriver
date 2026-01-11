@@ -654,7 +654,8 @@ const parseDate = (text) => {
     if (year < 100) {
       year += 2000;
     }
-    parsed = new Date(year, month - 1, day);
+    // Use UTC to avoid timezone issues
+    parsed = new Date(Date.UTC(year, month - 1, day));
     if (!Number.isNaN(parsed.getTime())) {
       return parsed;
     }
@@ -664,7 +665,8 @@ const parseDate = (text) => {
   if (monthYear) {
     const month = Number(monthYear[1]);
     const year = Number(monthYear[2]);
-    parsed = new Date(year, month - 1, 1);
+    // Use UTC to avoid timezone issues
+    parsed = new Date(Date.UTC(year, month - 1, 1));
     if (!Number.isNaN(parsed.getTime())) {
       return parsed;
     }
@@ -935,6 +937,10 @@ const openModal = (entry) => {
 const closeModal = () => {
   entryModalEl.classList.remove("is-open");
   entryModalEl.setAttribute("aria-hidden", "true");
+  // Clear content to prevent memory leaks
+  modalBodyEl.textContent = "";
+  modalTitleEl.textContent = "";
+  modalMetaEl.textContent = "";
 };
 
 const getFilteredEntries = () => {
@@ -1022,51 +1028,76 @@ const loadPdfLibraries = async () => {
   }
 };
 
+// Prevent race conditions in exports
+let isExportingCsv = false;
+let isExportingPdf = false;
+
 const exportToCsv = (entries) => {
+  if (isExportingCsv) {
+    console.log('[Export] CSV export already in progress');
+    return;
+  }
+
   if (!entries || entries.length === 0) {
     alert("No entries to export.");
     return;
   }
 
-  // Header
-  let csvContent = "Date,Content\n";
+  isExportingCsv = true;
 
-  // Rows
-  entries.forEach(entry => {
-    // Escape quotes and wrap content in quotes
-    const date = entry.dateText ? `"${entry.dateText.replace(/"/g, '""')}"` : "";
-    const content = entry.content ? `"${entry.content.replace(/"/g, '""').replace(/\n/g, ' ')}"` : "";
-    csvContent += `${date},${content}\n`;
-  });
+  try {
+    // Header
+    let csvContent = "Date,Content\n";
 
-  // Create blob and download
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.setAttribute("href", url);
-  link.setAttribute("download", `cq_comments_export_${new Date().toISOString().slice(0, 10)}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+    // Rows
+    entries.forEach(entry => {
+      // Escape quotes and wrap content in quotes
+      const date = entry.dateText ? `"${entry.dateText.replace(/"/g, '""')}"` : "";
+      const content = entry.content ? `"${entry.content.replace(/"/g, '""').replace(/\n/g, ' ')}"` : "";
+      csvContent += `${date},${content}\n`;
+    });
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `cq_comments_export_${new Date().toISOString().slice(0, 10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  } finally {
+    // Reset flag after a short delay
+    setTimeout(() => {
+      isExportingCsv = false;
+    }, 1000);
+  }
 };
 
 const exportToPdf = async (entries) => {
+  if (isExportingPdf) {
+    console.log('[Export] PDF export already in progress');
+    return;
+  }
+
   if (!entries || entries.length === 0) {
     alert("No entries to export.");
     return;
   }
 
-  // Lazy load PDF libraries
-  const loaded = await loadPdfLibraries();
-  if (!loaded) return;
-
-  if (!window.jspdf) {
-    alert("PDF library not loaded. Please refresh and try again.");
-    return;
-  }
+  isExportingPdf = true;
 
   try {
+    // Lazy load PDF libraries
+    const loaded = await loadPdfLibraries();
+    if (!loaded) return;
+
+    if (!window.jspdf) {
+      alert("PDF library not loaded. Please refresh and try again.");
+      return;
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
@@ -1130,10 +1161,15 @@ const exportToPdf = async (entries) => {
     cursorY += 8; // Spacing between entries
   });
 
-  doc.save(`cq_comments_export_${new Date().toISOString().slice(0, 10)}.pdf`);
+    doc.save(`cq_comments_export_${new Date().toISOString().slice(0, 10)}.pdf`);
   } catch (error) {
     console.error('[Export] PDF generation failed:', error);
     alert('Failed to generate PDF. Please try again.');
+  } finally {
+    // Reset flag after a short delay
+    setTimeout(() => {
+      isExportingPdf = false;
+    }, 1000);
   }
 };
 
