@@ -792,11 +792,11 @@
      * @param {string} content - The full content
      * @param {Array<{term: string, isExact: boolean}>} searchTerms - Parsed search terms
      * @param {number} wordsAround - Number of words to show before/after the match
-     * @returns {string} Context excerpt with ellipsis if truncated
+     * @returns {string|null} Context excerpt with ellipsis if truncated, or null if no match found
      */
     const getSearchContext = (content, searchTerms, wordsAround = 15) => {
       if (!content || !searchTerms || searchTerms.length === 0) {
-        return content;
+        return null;
       }
 
       const lowerContent = content.toLowerCase();
@@ -814,9 +814,9 @@
         }
       });
 
-      // If no match found, return original content (shouldn't happen as filterBySearch already matched)
+      // If no match found in content, return null (match may be in dateText only)
       if (firstMatchIndex === -1) {
-        return content;
+        return null;
       }
 
       // Split content into words while preserving positions
@@ -835,7 +835,7 @@
       }
 
       if (matchWordIndex === -1) {
-        return content; // Fallback
+        return null; // No match found
       }
 
       // Count actual words (not whitespace)
@@ -1094,10 +1094,22 @@
 
         if (searchTerms.length > 0) {
           // Get context excerpt around search term
-          text = getSearchContext(fullText, searchTerms, 15);
-          // Highlight keywords in the excerpt
-          const highlightedText = highlightKeywords(text, searchTerms);
-          paragraph.innerHTML = highlightedText;
+          const contextExcerpt = getSearchContext(fullText, searchTerms, 15);
+
+          if (contextExcerpt !== null) {
+            // Match found in content - show context with highlighting
+            const highlightedText = highlightKeywords(contextExcerpt, searchTerms);
+            paragraph.innerHTML = highlightedText;
+          } else {
+            // No match in content (match was in dateText only) - show normal preview
+            const lines = fullText.split("\n");
+            const preview = lines.slice(0, 3).join("\n");
+            text = preview;
+            if (text.length > maxLength) {
+              text = `${text.slice(0, maxLength).trim()}…`;
+            }
+            paragraph.textContent = text;
+          }
         } else {
           // Normal preview: first few lines (up to 3)
           const lines = fullText.split("\n");
