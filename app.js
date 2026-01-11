@@ -875,10 +875,7 @@ const closeModal = () => {
   entryModalEl.setAttribute("aria-hidden", "true");
 };
 
-const renderEntries = () => {
-  const noResultsEl = document.getElementById('noResultsMessage');
-  const noResultsTextEl = document.getElementById('noResultsText');
-
+const getFilteredEntries = () => {
   // Step 1: Get base entries based on search scope
   let baseEntries;
   if (searchTerms.length > 0 && searchScope === 'all') {
@@ -908,12 +905,109 @@ const renderEntries = () => {
     }
   });
 
+  return visibleEntries;
+};
+
+const exportToCsv = (entries) => {
+  if (!entries || entries.length === 0) {
+    alert("No entries to export.");
+    return;
+  }
+
+  // Header
+  let csvContent = "Date,Content\n";
+
+  // Rows
+  entries.forEach(entry => {
+    // Escape quotes and wrap content in quotes
+    const date = entry.dateText ? `"${entry.dateText.replace(/"/g, '""')}"` : "";
+    const content = entry.content ? `"${entry.content.replace(/"/g, '""').replace(/\n/g, ' ')}"` : "";
+    csvContent += `${date},${content}\n`;
+  });
+
+  // Create blob and download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", `cq_comments_export_${new Date().toISOString().slice(0, 10)}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
+const exportToPdf = (entries) => {
+  if (!entries || entries.length === 0) {
+    alert("No entries to export.");
+    return;
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Title
+  doc.setFontSize(16);
+  doc.text("CQ Line Pilot Comments", 14, 15);
+  doc.setFontSize(10);
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
+
+  // Table
+  const tableData = entries.map(entry => [entry.dateText || "Unknown", entry.content]);
+
+  doc.autoTable({
+    startY: 25,
+    head: [['Date', 'Comment']],
+    body: tableData,
+    styles: { overflow: 'linebreak', cellWidth: 'wrap' },
+    columnStyles: {
+      0: { cellWidth: 30 }, // Date column width
+      1: { cellWidth: 'auto' } // Content column takes remaining space
+    },
+  });
+
+  doc.save(`cq_comments_export_${new Date().toISOString().slice(0, 10)}.pdf`);
+};
+
+const renderEntries = () => {
+  const noResultsEl = document.getElementById('noResultsMessage');
+  const noResultsTextEl = document.getElementById('noResultsText');
+
+  const visibleEntries = getFilteredEntries();
+
   // Step 4: Update status
   if (searchTerms.length > 0) {
-    const totalCount = searchScope === 'all' ? allEntries.length : baseEntries.length;
-    statusEl.textContent = `${visibleEntries.length} of ${totalCount} comments match your search.`;
+    // Calculate total for "X of Y" logic
+    // Re-calculate base length for accuracy
+    const base = searchScope === 'all' ? allEntries : allEntries.filter(isWithinRange);
+    const totalCount = base.length;
+
+    statusEl.innerHTML = `
+      <span>${visibleEntries.length} of ${totalCount} comments match your search.</span>
+      <span class="export-links">
+        <button id="exportCsvBtn" class="link-btn">Export CSV</button>
+        <button id="exportPdfBtn" class="link-btn">Export PDF</button>
+      </span>
+    `;
   } else {
-    statusEl.textContent = `${visibleEntries.length} entries loaded.`;
+    statusEl.innerHTML = `
+      <span>${visibleEntries.length} entries loaded.</span>
+      <span class="export-links">
+        <button id="exportCsvBtn" class="link-btn">Export CSV</button>
+        <button id="exportPdfBtn" class="link-btn">Export PDF</button>
+      </span>
+    `;
+  }
+
+  // Attach listeners to new buttons
+  const exportCsvBtn = document.getElementById('exportCsvBtn');
+  const exportPdfBtn = document.getElementById('exportPdfBtn');
+
+  if (exportCsvBtn) {
+    exportCsvBtn.addEventListener('click', () => exportToCsv(visibleEntries));
+  }
+  if (exportPdfBtn) {
+    exportPdfBtn.addEventListener('click', () => exportToPdf(visibleEntries));
   }
 
   // Step 5: Handle no results

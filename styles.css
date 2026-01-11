@@ -726,3 +726,36 @@
       display: none;
     }
   }
+
+  .status {
+    margin: 20px 0 12px;
+    color: var(--muted);
+    font-size: 0.95rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .export-links {
+    display: flex;
+    gap: 12px;
+  }
+
+  .link-btn {
+    background: transparent;
+    border: none;
+    color: var(--accent);
+    padding: 0;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+  }
+
+  .link-btn:hover {
+    text-decoration: underline;
+    background: transparent;
+    color: var(--header-gradient-end);
+  }
