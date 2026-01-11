@@ -128,6 +128,23 @@
     </div>
   </div>
 
+  <script type="module">
+    import {onCLS, onFID, onLCP, onFCP, onTTFB} from 'https://unpkg.com/web-vitals@3/dist/web-vitals.js';
+
+    function sendToAnalytics(metric) {
+      const {name, value, rating} = metric;
+      console.log(`[Web Vitals] ${name}: ${value.toFixed(2)}ms (${rating})`);
+
+      // Optional: Send to analytics service
+      // navigator.sendBeacon('/analytics', JSON.stringify(metric));
+    }
+
+    onCLS(sendToAnalytics);
+    onFID(sendToAnalytics);
+    onLCP(sendToAnalytics);
+    onFCP(sendToAnalytics);
+    onTTFB(sendToAnalytics);
+  </script>
   <script src="app.js" defer></script>
 </body>
 </html>
