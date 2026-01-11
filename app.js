@@ -823,9 +823,11 @@ const isWithinRange = (entry) => {
   return true;
 };
 
-const createCard = (entry) => {
+const createCard = (entry, index) => {
   const card = document.createElement("article");
   card.className = "card";
+  card.dataset.entryIndex = index; // Store index for event delegation
+  card.style.cursor = "pointer";
 
   const tag = document.createElement("span");
   tag.className = "tag";
@@ -882,17 +884,9 @@ const createCard = (entry) => {
 
   const expandBtn = document.createElement("button");
   expandBtn.type = "button";
+  expandBtn.className = "expand-btn";
   expandBtn.textContent = "View full report";
-  expandBtn.addEventListener("click", () => openModal(entry));
   textWrap.appendChild(expandBtn);
-  // Make entire card clickable to open modal
-  card.addEventListener("click", (e) => {
-    // Don't trigger if clicking the button (it has its own handler)
-    if (e.target !== expandBtn) {
-      openModal(entry);
-    }
-  });
-  card.style.cursor = "pointer";
 
   card.appendChild(tag);
   card.appendChild(textWrap);
@@ -976,6 +970,58 @@ const getFilteredEntries = () => {
   return visibleEntries;
 };
 
+// Lazy load PDF libraries only when needed
+let pdfLibrariesLoaded = false;
+let pdfLibrariesLoading = false;
+
+const loadPdfLibraries = async () => {
+  if (pdfLibrariesLoaded) return true;
+  if (pdfLibrariesLoading) {
+    // Wait for existing load to complete
+    while (pdfLibrariesLoading) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return pdfLibrariesLoaded;
+  }
+
+  pdfLibrariesLoading = true;
+
+  try {
+    // Load jsPDF
+    await new Promise((resolve, reject) => {
+      const script1 = document.createElement('script');
+      script1.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+      script1.integrity = 'sha512-qZvrmS2ekKPF2mSznTQsxqPgnpkI4DNougY+2EgL+z8HWdlNBvS9q1r6f6L2lj9G2V7nFdJK9FGF7slWvLl5KQ==';
+      script1.crossOrigin = 'anonymous';
+      script1.referrerPolicy = 'no-referrer';
+      script1.onload = resolve;
+      script1.onerror = reject;
+      document.head.appendChild(script1);
+    });
+
+    // Load jsPDF AutoTable
+    await new Promise((resolve, reject) => {
+      const script2 = document.createElement('script');
+      script2.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js';
+      script2.integrity = 'sha512-8Bf/h9s+8vBZlR3Jxlkr3XJwn+5Ew7gHDRWM5bOvtB7bq0/HHtBcmWHVv7h5OiNGn+qYRlxYNiLfGSPLg+8lRw==';
+      script2.crossOrigin = 'anonymous';
+      script2.referrerPolicy = 'no-referrer';
+      script2.onload = resolve;
+      script2.onerror = reject;
+      document.head.appendChild(script2);
+    });
+
+    pdfLibrariesLoaded = true;
+    return true;
+  } catch (error) {
+    console.error('[Export] Failed to load PDF libraries:', error);
+    alert('Failed to load PDF library. Please refresh and try again.');
+    return false;
+  } finally {
+    pdfLibrariesLoading = false;
+  }
+};
+
 const exportToCsv = (entries) => {
   if (!entries || entries.length === 0) {
     alert("No entries to export.");
@@ -1005,14 +1051,24 @@ const exportToCsv = (entries) => {
   document.body.removeChild(link);
 };
 
-const exportToPdf = (entries) => {
+const exportToPdf = async (entries) => {
   if (!entries || entries.length === 0) {
     alert("No entries to export.");
     return;
   }
 
-  const { jsPDF } = window.jspdf;
-  const doc = new jsPDF();
+  // Lazy load PDF libraries
+  const loaded = await loadPdfLibraries();
+  if (!loaded) return;
+
+  if (!window.jspdf) {
+    alert("PDF library not loaded. Please refresh and try again.");
+    return;
+  }
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
 
   // Page setup
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -1075,6 +1131,10 @@ const exportToPdf = (entries) => {
   });
 
   doc.save(`cq_comments_export_${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (error) {
+    console.error('[Export] PDF generation failed:', error);
+    alert('Failed to generate PDF. Please try again.');
+  }
 };
 
 const renderEntries = () => {
@@ -1148,10 +1208,25 @@ const renderEntries = () => {
   // Step 6: Hide no results message and render cards
   noResultsEl.style.display = 'none';
   cardsEl.innerHTML = "";
-  visibleEntries.forEach((entry) => {
-    cardsEl.appendChild(createCard(entry));
+  visibleEntries.forEach((entry, index) => {
+    cardsEl.appendChild(createCard(entry, index));
   });
 };
+
+// Event delegation for card clicks (prevents memory leaks from individual listeners)
+cardsEl.addEventListener('click', (e) => {
+  const card = e.target.closest('.card');
+  if (!card) return;
+
+  // Don't open modal if clicking the expand button (it will bubble up anyway)
+  // Just let any click on the card open the modal
+  const entryIndex = parseInt(card.dataset.entryIndex, 10);
+  const visibleEntries = getFilteredEntries();
+
+  if (entryIndex >= 0 && entryIndex < visibleEntries.length) {
+    openModal(visibleEntries[entryIndex]);
+  }
+});
 
 // --- UI Logic: Panels & Toggles ---
 
@@ -1432,8 +1507,19 @@ if (refreshDataBtn) {
   });
 }
 
-// Update cache status every minute
-setInterval(updateCacheStatus, 60000);
+// Update cache status every minute, but only when page is visible
+setInterval(() => {
+  if (!document.hidden) {
+    updateCacheStatus();
+  }
+}, 60000);
+
+// Also update when page becomes visible
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    updateCacheStatus();
+  }
+});
 
 // Disclaimer modal handling
 const DISCLAIMER_KEY = "airbusdriver_disclaimer_accepted";
