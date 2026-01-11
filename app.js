@@ -287,8 +287,9 @@
         return text;
       }
 
-      // Create cache key from search terms
-      const cacheKey = searchTerms.map(({ term }) => term).join('|');
+      // Create collision-free cache key using JSON serialization
+      // This prevents collisions like "a b" vs "a|b"
+      const cacheKey = JSON.stringify(searchTerms);
 
       // Check if regex is already compiled for these terms
       if (searchRegexCacheKey !== cacheKey) {
