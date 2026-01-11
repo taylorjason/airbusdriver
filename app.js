@@ -946,24 +946,64 @@ const exportToPdf = (entries) => {
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF();
 
+  // Page setup
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 14;
+  const maxLineWidth = pageWidth - (margin * 2);
+  let cursorY = 20;
+
   // Title
   doc.setFontSize(16);
-  doc.text("CQ Line Pilot Comments", 14, 15);
+  doc.setFont("helvetica", "bold");
+  doc.text("CQ Line Pilot Comments", margin, cursorY);
+  cursorY += 7;
+
   doc.setFontSize(10);
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, 14, 22);
+  doc.setFont("helvetica", "normal");
+  doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, cursorY);
+  cursorY += 15;
 
-  // Table
-  const tableData = entries.map(entry => [entry.dateText || "Unknown", entry.content]);
+  // Entries
+  entries.forEach(entry => {
+    // Check for page break needed for header
+    if (cursorY + 15 > pageHeight - margin) {
+      doc.addPage();
+      cursorY = margin;
+    }
 
-  doc.autoTable({
-    startY: 25,
-    head: [['Date', 'Comment']],
-    body: tableData,
-    styles: { overflow: 'linebreak', cellWidth: 'wrap' },
-    columnStyles: {
-      0: { cellWidth: 30 }, // Date column width
-      1: { cellWidth: 'auto' } // Content column takes remaining space
-    },
+    // Date Header (Bold)
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text(entry.dateText || "Unknown Date", margin, cursorY);
+    cursorY += 6;
+
+    // Content (Normal)
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(10);
+
+    // Split text to fit width
+    const splitText = doc.splitTextToSize(entry.content, maxLineWidth);
+
+    // Check space for content
+    const contentHeight = splitText.length * 5; // approx 5 units per line
+    if (cursorY + contentHeight > pageHeight - margin) {
+      // If content is huge, we might need a page break in the middle
+      // For simple approach: just add page if it doesn't fit mostly
+      // Or iterate lines. Let's iterate lines for better splitting.
+    }
+
+    // Simple line iterator
+    splitText.forEach(line => {
+      if (cursorY > pageHeight - margin) {
+        doc.addPage();
+        cursorY = margin;
+      }
+      doc.text(line, margin, cursorY);
+      cursorY += 5; // line height
+    });
+
+    cursorY += 8; // Spacing between entries
   });
 
   doc.save(`cq_comments_export_${new Date().toISOString().slice(0, 10)}.pdf`);
