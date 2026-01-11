@@ -1,295 +1,160 @@
-# AI Agents Workflow
+# AGENTS.md
 
-This document describes the AI-assisted development workflow used for the AirbusDriver project.
+Instructions for AI coding agents working on the AirbusDriver project.
 
-## Overview
+## Project Overview
 
-We use a multi-agent approach to development, leveraging different AI tools for specific tasks:
+AirbusDriver is a web application that proxies and modernizes the legacy airbusdriver.net pilot comments page. It consists of:
 
-- **Claude Code** - Primary development agent for implementation, refactoring, and debugging
-- **ChatGPT** - Code review and PR feedback
-- **Google Antigravity** - AI-assisted development work
+- A static frontend (HTML/CSS/JS) hosted on GitHub Pages
+- A Cloudflare Worker proxy that fetches and caches data from the legacy site
 
-## Agent Roles & Responsibilities
+## Project Structure
 
-### Claude Code
+```
+├── index.html          # Main HTML document with critical inline CSS
+├── app.js              # All frontend JavaScript logic (~1000 lines)
+├── styles.css          # Deferred stylesheet
+├── workers/
+│   └── index.js        # Cloudflare Worker proxy with caching
+├── wrangler.toml       # Cloudflare Worker configuration
+└── .github/workflows/
+    └── deploy-worker.yml   # CI/CD for Worker deployment
+```
 
-**Primary Use Cases:**
-- Feature implementation
-- Bug fixes and debugging
-- Code refactoring
-- Documentation updates
-- Architecture decisions
-- Performance optimization
+## Code Style
 
-**Workflow:**
-1. Start Claude Code in the project directory
-2. Provide context about the task (reference issues, PRs, or documentation)
-3. Let Claude explore the codebase to understand current implementation
-4. Review and iterate on Claude's proposed changes
-5. Commit changes with descriptive messages
+### JavaScript
+- Vanilla JavaScript only. Do not introduce frameworks or build tools.
+- Use `const` by default, `let` when reassignment is needed, never `var`.
+- Use arrow functions for callbacks and anonymous functions.
+- Use template literals for string interpolation.
+- Prefix console logs with context: `console.log('[Cache] message')`.
+- Use JSDoc comments for function documentation.
 
-**Best Practices:**
-- Let Claude read existing code before making changes
-- Reference specific files and line numbers for precise context
-- Use Claude for complex refactoring that spans multiple files
-- Leverage Claude's ability to understand the full codebase context
+### CSS
+- Use CSS custom properties (variables) defined in `:root`.
+- Mobile-first responsive design with media queries.
+- Use semantic class names.
 
-**Example Commands:**
+### HTML
+- Use semantic HTML5 elements.
+- Keep accessibility in mind (ARIA labels where appropriate).
+
+## Security Requirements
+
+### Boundaries - DO NOT:
+- Modify the `ALLOWED_HOSTS` whitelist in `workers/index.js` without explicit approval.
+- Add external script sources or CDN dependencies without approval.
+- Store or log user data beyond localStorage caching.
+- Disable CORS protections or security headers.
+- Commit secrets, API keys, or tokens.
+
+### Input Validation
+- All URLs passed to the Worker must be validated against `ALLOWED_HOSTS`.
+- Sanitize any user-provided search input before DOM insertion.
+- Use `textContent` over `innerHTML` when possible to prevent XSS.
+
+### Worker Security
+- The Worker only accepts GET, HEAD, and OPTIONS requests.
+- Only proxy requests to whitelisted domains.
+- Return proper error responses with appropriate status codes.
+
+## Architecture Notes
+
+### Two-Tier Caching
+The application uses a two-tier caching strategy. Understand this before making changes:
+
+1. **Client-side (localStorage)**: 24-hour cache in browser
+   - Cache key: `airbusdriver_cache`
+   - Stores: raw HTML, parsed entries, timestamp
+
+2. **Server-side (Cloudflare Cache API)**: 24-hour cache at edge
+   - Controlled via `Cache-Control` headers
+   - Only caches successful (2xx) responses
+
+### Cache Invalidation
+- Double-refresh within 15 seconds bypasses client cache
+- `Cache-Control: no-cache` header bypasses server cache
+- "Refresh Data" button forces full refresh
+
+## Testing
+
+There are no automated tests. Before submitting changes:
+
+1. Open `index.html` in a browser.
+2. Verify the page loads and displays cached or fetched data.
+3. Test date filtering and search functionality.
+4. Test the modal view by clicking an entry.
+5. Test cache invalidation via double-refresh.
+6. For Worker changes, test locally with `npx wrangler dev`.
+
+### Local Worker Development
 ```bash
-# Start Claude Code
-claude
-
-# Common prompts
-"Add a new filter option for viewing entries from the last 7 days"
-"Optimize the search highlighting function for better performance"
-"Fix the bug where cache doesn't invalidate after double refresh"
-"Update README.md with the new deployment process"
+npx wrangler dev
 ```
 
-### ChatGPT - Code Review
+## Deployment
 
-**Primary Use Cases:**
-- PR code reviews
-- Identifying potential bugs or edge cases
-- Suggesting alternative implementations
-- Security vulnerability checks
-- Code quality feedback
+### Frontend (GitHub Pages)
+- Merges to `main` automatically deploy via GitHub Pages.
+- No build step required.
 
-**Workflow:**
-1. Create a PR with your changes
-2. Copy the diff or share the PR link with ChatGPT
-3. Ask for specific review focus areas (e.g., "Review for security issues")
-4. Address feedback in follow-up commits
-5. Document significant review findings
+### Cloudflare Worker
+- Changes to `workers/` or `wrangler.toml` trigger automatic deployment.
+- CI runs via `.github/workflows/deploy-worker.yml`.
+- Manual deploy: `npx wrangler deploy --env production`
 
-**Review Checklist:**
-- [ ] Security vulnerabilities (XSS, injection attacks)
-- [ ] Performance implications
-- [ ] Browser compatibility issues
-- [ ] Edge cases and error handling
-- [ ] Code maintainability and readability
-- [ ] Consistent with project patterns
+## Git Workflow
 
-**Example Prompts:**
-```
-"Review this PR for potential security issues: [PR link or diff]"
-"Check this caching implementation for race conditions"
-"Suggest improvements for this search algorithm"
-```
-
-### Google Antigravity
-
-**Primary Use Cases:**
-- AI-assisted development
-- Rapid prototyping
-- Exploratory coding
-- Alternative solution generation
-
-**Workflow:**
-1. Use for experimental features or proof-of-concepts
-2. Test generated code thoroughly before integration
-3. Refactor AI-generated code to match project style
-4. Document any AI-assisted sections for future reference
-
-## Project-Specific Workflows
-
-### Adding a New Feature
-
-1. **Planning** (Claude Code)
-   - Discuss feature requirements
-   - Review existing architecture
-   - Plan implementation approach
-
-2. **Implementation** (Claude Code)
-   - Write feature code
-   - Add tests if applicable
-   - Update documentation
-
-3. **Review** (ChatGPT)
-   - Create PR
-   - Get AI code review
-   - Address feedback
-
-4. **Refinement** (Claude Code)
-   - Implement review feedback
-   - Final polish and optimization
-
-### Bug Fixes
-
-1. **Diagnosis** (Claude Code)
-   - Describe the bug behavior
-   - Let Claude analyze relevant code
-   - Identify root cause
-
-2. **Fix Implementation** (Claude Code)
-   - Apply fix
-   - Test edge cases
-   - Update tests if needed
-
-3. **Verification** (ChatGPT)
-   - Review fix for unintended side effects
-   - Check for similar bugs elsewhere
-
-### Performance Optimization
-
-1. **Analysis** (Claude Code)
-   - Identify bottlenecks
-   - Review performance metrics
-   - Propose optimization strategies
-
-2. **Implementation** (Claude Code)
-   - Apply optimizations (e.g., regex memoization, caching)
-   - Measure improvements
-   - Document performance gains
-
-3. **Review** (ChatGPT)
-   - Verify optimization correctness
-   - Check for edge cases
-   - Ensure no functionality regression
-
-## Technology-Specific Guidelines
-
-### Frontend (HTML/CSS/JS)
-
-**Claude Code:**
-- Maintain vanilla JS approach (no framework dependencies)
-- Preserve existing coding style and patterns
-- Keep accessibility in mind
-- Ensure mobile responsiveness
-
-**ChatGPT Review Focus:**
-- Cross-browser compatibility
-- Performance (DOM operations, reflows)
-- Memory leaks
-- Accessibility (ARIA, semantic HTML)
-
-### Cloudflare Workers
-
-**Claude Code:**
-- Follow Workers runtime limitations
-- Optimize for edge performance
-- Handle errors gracefully
-- Maintain cache strategy
-
-**ChatGPT Review Focus:**
-- Cold start optimization
-- Security headers
-- CORS handling
-- Error responses
-
-### Caching Strategy
-
-**Claude Code:**
-- Understand two-tier cache (localStorage + Cloudflare)
-- Preserve 24-hour cache duration
-- Maintain cache invalidation logic (double-refresh)
-- Consider cache hit/miss patterns
-
-**ChatGPT Review Focus:**
-- Cache key collisions
-- Stale data scenarios
-- Cache invalidation edge cases
-- Performance trade-offs
-
-## Best Practices
-
-### General Guidelines
-
-1. **Context is Key**: Always provide relevant context (issue numbers, related files, error messages)
-2. **Iterative Development**: Make incremental changes rather than large rewrites
-3. **Test Thoroughly**: AI-generated code should be tested like any other code
-4. **Maintain Style**: Ensure AI suggestions match project coding standards
-5. **Document Decisions**: Record why certain AI suggestions were accepted or rejected
-
-### Security Considerations
-
-- Never commit API keys or secrets suggested by AI
-- Review AI-generated security-related code carefully
-- Validate all user inputs, even in AI-suggested code
-- Check CORS and CSP configurations
-
-### Performance
-
-- Benchmark AI-suggested optimizations
-- Don't over-optimize based on AI suggestions
-- Consider real-world usage patterns
-- Monitor Web Vitals after changes
-
-## Integration with Git Workflow
-
-### Branch Naming
-```bash
-# For Claude Code automated branches
-claude/feature-description-SessionId
-
-# For manual branches
-feature/feature-name
-fix/bug-description
-perf/optimization-description
-docs/documentation-update
-```
+## Commits and PRs
+- Commit and PRs should be focused on a single change.
+- Provide a clear description of the change in the PR description. Include info from all related commits and issues.
+- Do not create a PR until instructed to do so.
+- Reference related issues in the PR description.
+- Ensure the frontend works before requesting review.
 
 ### Commit Messages
-
-Claude Code typically generates descriptive commit messages. Follow this format:
-
+Use conventional commits:
 ```
-<type>: <brief description>
-
-<detailed explanation if needed>
-
-- Bullet points for multiple changes
-- Related issue: #123
+feat: add new filter option
+fix: correct date parsing for edge case
+perf: memoize search regex compilation
+docs: update README with cache flow
+refactor: extract helper function
 ```
 
-Types: `feat`, `fix`, `perf`, `docs`, `refactor`, `style`, `test`, `chore`
+### Pull Requests
+- Keep PRs focused on a single change.
+- Reference related issues in the PR description.
+- Ensure the frontend works before requesting review.
 
-### Pull Request Process
+## Common Tasks
 
-1. **Create PR** with descriptive title and summary
-2. **AI Review** (ChatGPT) - paste diff or share link
-3. **Address Feedback** with Claude Code
-4. **Final Review** - Human review before merge
-5. **Merge** and deploy via GitHub Actions
+### Adding a New Feature
+1. Read existing code in `app.js` to understand patterns.
+2. Implement feature following existing code style.
+3. Test manually in browser.
+4. Update README.md if user-facing behavior changes.
 
-## Troubleshooting AI Interactions
+### Modifying the Worker
+1. Read `workers/index.js` completely before changes.
+2. Preserve the ALLOWED_HOSTS security boundary.
+3. Maintain cache behavior and headers.
+4. Test with `npx wrangler dev` before committing.
 
-### Claude Code
+### Performance Optimization
+- Check for DOM operation frequency (batch updates).
+- Use memoization for expensive computations (see `searchRegexCache` pattern).
+- Avoid layout thrashing (read then write to DOM).
+- Preserve existing caching behavior.
 
-**Issue:** Claude makes changes without reading the file first
-**Solution:** Explicitly ask "First read the current implementation"
+## Key Files Reference
 
-**Issue:** Claude suggests over-engineered solutions
-**Solution:** Specify "Keep it simple" or "Minimal changes only"
-
-**Issue:** Claude doesn't understand project context
-**Solution:** Reference existing documentation (README.md, cachingplan.md)
-
-### ChatGPT Reviews
-
-**Issue:** Reviews are too generic
-**Solution:** Provide specific focus areas or ask targeted questions
-
-**Issue:** Suggestions conflict with project architecture
-**Solution:** Provide context about design decisions and constraints
-
-## Resources
-
-- [Claude Code Documentation](https://docs.anthropic.com/claude-code)
-- [Project README](README.md) - Architecture overview
-- [Deployment Guide](DEPLOYMENT.md) - Setup and deployment
-- [Caching Plan](cachingplan.md) - Caching strategy details
-
-## Contributing
-
-When using AI agents for this project:
-
-1. Review all AI-generated code before committing
-2. Test changes locally and verify functionality
-3. Update this document if you discover new effective workflows
-4. Share learnings with the team
-
-## Changelog
-
-- 2026-01-11: Initial agents.md documentation created
+| File | Purpose |
+|------|---------|
+| `app.js:58` | PROXY_URL constant for Worker endpoint |
+| `app.js:77-79` | Cache configuration constants |
+| `app.js:74` | Marker text for HTML parsing |
+| `workers/index.js:14-17` | ALLOWED_HOSTS security whitelist |
+| `workers/index.js:71-73` | Cache API implementation |
