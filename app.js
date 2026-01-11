@@ -532,7 +532,8 @@ const renderHighlightedText = (text, searchTerms, container) => {
  * @returns {string} Escaped string
  */
 const escapeRegex = (str) => {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  // Escape all special regex characters including hyphen
+  return str.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
 };
 
 /**
@@ -784,6 +785,16 @@ const fetchWithProxy = async (targetUrl, forceRefresh = false) => {
   const proxyUrl = buildProxyUrl(PROXY_URL, targetUrl);
   if (!proxyUrl) {
     throw new Error("No proxy URL configured.");
+  }
+
+  // Validate proxy URL format
+  try {
+    const parsedUrl = new URL(proxyUrl);
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      throw new Error("Invalid proxy URL protocol");
+    }
+  } catch (e) {
+    throw new Error(`Invalid proxy URL format: ${e.message}`);
   }
 
   // Add Cache-Control header for force refresh
@@ -1101,65 +1112,65 @@ const exportToPdf = async (entries) => {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
 
-  // Page setup
-  const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
-  const margin = 14;
-  const maxLineWidth = pageWidth - (margin * 2);
-  let cursorY = 20;
+    // Page setup
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 14;
+    const maxLineWidth = pageWidth - (margin * 2);
+    let cursorY = 20;
 
-  // Title
-  doc.setFontSize(16);
-  doc.setFont("helvetica", "bold");
-  doc.text("CQ Line Pilot Comments", margin, cursorY);
-  cursorY += 7;
-
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "normal");
-  doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, cursorY);
-  cursorY += 15;
-
-  // Entries
-  entries.forEach(entry => {
-    // Check for page break needed for header
-    if (cursorY + 15 > pageHeight - margin) {
-      doc.addPage();
-      cursorY = margin;
-    }
-
-    // Date Header (Bold)
+    // Title
+    doc.setFontSize(16);
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.text(entry.dateText || "Unknown Date", margin, cursorY);
-    cursorY += 6;
+    doc.text("CQ Line Pilot Comments", margin, cursorY);
+    cursorY += 7;
 
-    // Content (Normal)
-    doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated: ${new Date().toLocaleDateString()}`, margin, cursorY);
+    cursorY += 15;
 
-    // Split text to fit width
-    const splitText = doc.splitTextToSize(entry.content, maxLineWidth);
-
-    // Check space for content
-    const contentHeight = splitText.length * 5; // approx 5 units per line
-    if (cursorY + contentHeight > pageHeight - margin) {
-      // If content is huge, we might need a page break in the middle
-      // For simple approach: just add page if it doesn't fit mostly
-      // Or iterate lines. Let's iterate lines for better splitting.
-    }
-
-    // Simple line iterator
-    splitText.forEach(line => {
-      if (cursorY > pageHeight - margin) {
+    // Entries
+    entries.forEach(entry => {
+      // Check for page break needed for header
+      if (cursorY + 15 > pageHeight - margin) {
         doc.addPage();
         cursorY = margin;
       }
-      doc.text(line, margin, cursorY);
-      cursorY += 5; // line height
-    });
 
-    cursorY += 8; // Spacing between entries
-  });
+      // Date Header (Bold)
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text(entry.dateText || "Unknown Date", margin, cursorY);
+      cursorY += 6;
+
+      // Content (Normal)
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+
+      // Split text to fit width
+      const splitText = doc.splitTextToSize(entry.content, maxLineWidth);
+
+      // Check space for content
+      const contentHeight = splitText.length * 5; // approx 5 units per line
+      if (cursorY + contentHeight > pageHeight - margin) {
+        // If content is huge, we might need a page break in the middle
+        // For simple approach: just add page if it doesn't fit mostly
+        // Or iterate lines. Let's iterate lines for better splitting.
+      }
+
+      // Simple line iterator
+      splitText.forEach(line => {
+        if (cursorY > pageHeight - margin) {
+          doc.addPage();
+          cursorY = margin;
+        }
+        doc.text(line, margin, cursorY);
+        cursorY += 5; // line height
+      });
+
+      cursorY += 8; // Spacing between entries
+    });
 
     doc.save(`cq_comments_export_${new Date().toISOString().slice(0, 10)}.pdf`);
   } catch (error) {
