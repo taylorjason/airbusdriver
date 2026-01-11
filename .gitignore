@@ -1,0 +1,59 @@
+# ---------------------------------------
+# OS / Editor junk
+# ---------------------------------------
+.DS_Store
+.DS_Store?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# VS Code / JetBrains
+.vscode/
+.idea/
+*.iml
+
+# Vim / swap files
+*.swp
+*.swo
+
+# ---------------------------------------
+# Logs
+# ---------------------------------------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------------------------------------
+# Secrets / env files
+# ---------------------------------------
+.env
+.env.*
+!.env.example
+
+# ---------------------------------------
+# Cloudflare Workers / Wrangler
+# ---------------------------------------
+.wrangler/
+.wrangler-cache/
+.wrangler/state/
+.dev.vars
+
+# ---------------------------------------
+# Node (only if you use Wrangler or any npm tooling)
+# ---------------------------------------
+node_modules/
+.pnp/
+.pnp.js
+
+# Caches
+.cache/
+.npm/
+.yarn/
+.pnpm-store/
+
+# ---------------------------------------
+# Misc
+# ---------------------------------------
+*.tgz
