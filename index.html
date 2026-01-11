@@ -303,6 +303,72 @@
       color: var(--text);
     }
 
+    .radio-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 0.95rem;
+      color: var(--text);
+    }
+
+    .radio-label input[type="radio"] {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
+    .radio-label span {
+      user-select: none;
+    }
+
+    mark {
+      background-color: #fef08a;
+      color: #854d0e;
+      padding: 2px 4px;
+      border-radius: 3px;
+      font-weight: 600;
+    }
+
+    .no-results {
+      margin: 20px 0;
+      padding: 32px 24px;
+      background: #fef2f2;
+      border: 2px solid #fca5a5;
+      border-radius: 16px;
+      text-align: center;
+    }
+
+    .no-results-content {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .no-results-title {
+      margin: 0 0 12px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #991b1b;
+    }
+
+    .no-results-text {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #7f1d1d;
+      line-height: 1.6;
+    }
+
+    .search-group {
+      flex: 2;
+      min-width: 250px;
+    }
+
     @media (max-width: 600px) {
       header {
         padding: 28px 18px 16px;
@@ -340,6 +406,23 @@
           <option value="oldest">Oldest first</option>
         </select>
       </div>
+      <div class="control-group search-group">
+        <label for="searchInput">Search comments</label>
+        <input type="text" id="searchInput" placeholder="Search keywords or &quot;exact phrase&quot;" />
+      </div>
+      <div class="control-group">
+        <label>Search scope</label>
+        <div class="radio-group">
+          <label class="radio-label">
+            <input type="radio" name="searchScope" value="filtered" checked />
+            <span>Filtered comments</span>
+          </label>
+          <label class="radio-label">
+            <input type="radio" name="searchScope" value="all" />
+            <span>All comments</span>
+          </label>
+        </div>
+      </div>
       <div class="actions">
         <button id="applyFilters">Apply filters</button>
         <button id="resetFilters" class="secondary">Reset</button>
@@ -369,6 +452,12 @@
     </section>
 
     <div class="status" id="status">Paste the HTML source to load entries.</div>
+    <div id="noResultsMessage" class="no-results" style="display: none;">
+      <div class="no-results-content">
+        <p class="no-results-title">No comments found</p>
+        <p class="no-results-text" id="noResultsText"></p>
+      </div>
+    </div>
     <section class="cards" id="cards"></section>
 
     <footer class="cache-info">
@@ -406,6 +495,8 @@
     const sourceUrlEl = document.getElementById("sourceUrl");
     const parseHtmlBtn = document.getElementById("parseHtml");
     const manualHtmlEl = document.getElementById("manualHtml");
+    const searchInputEl = document.getElementById("searchInput");
+    const searchScopeEls = document.getElementsByName("searchScope");
 
     // Initialize date inputs with calculated values
     const initializeDateInputs = () => {
@@ -459,6 +550,8 @@
 
     let allEntries = [];
     let lastCachedTimestamp = null;
+    let searchTerms = [];
+    let searchScope = 'filtered';
 
     const markerText = "Your CQ Line Pilot Comments will be placed here ...";
 
@@ -593,6 +686,195 @@
 
     const normalizeWhitespace = (value) =>
       value.replace(/\s+/g, " ").trim();
+
+    /**
+     * Parse search query into terms
+     * Handles quoted phrases as exact matches and space-separated keywords as OR logic
+     * @param {string} query - The search query string
+     * @returns {Array<{term: string, isExact: boolean}>} Array of search terms
+     */
+    const parseSearchQuery = (query) => {
+      if (!query || !query.trim()) {
+        return [];
+      }
+
+      const terms = [];
+      const normalized = query.trim();
+
+      // Extract quoted phrases first
+      const quoteRegex = /"([^"]+)"/g;
+      let match;
+      let processedQuery = normalized;
+
+      while ((match = quoteRegex.exec(normalized)) !== null) {
+        const phrase = match[1].trim();
+        if (phrase) {
+          terms.push({ term: phrase, isExact: true });
+        }
+      }
+
+      // Remove quoted phrases from the query
+      processedQuery = processedQuery.replace(quoteRegex, ' ').trim();
+
+      // Extract individual keywords (space-separated)
+      if (processedQuery) {
+        const keywords = processedQuery.split(/\s+/).filter(k => k.length > 0);
+        keywords.forEach(keyword => {
+          terms.push({ term: keyword, isExact: false });
+        });
+      }
+
+      return terms;
+    };
+
+    /**
+     * Filter entries by search terms (searches both content and date)
+     * Uses OR logic - matches if ANY term is found
+     * @param {Array} entries - Array of entry objects
+     * @param {Array<{term: string, isExact: boolean}>} searchTerms - Parsed search terms
+     * @returns {Array} Filtered entries
+     */
+    const filterBySearch = (entries, searchTerms) => {
+      if (!searchTerms || searchTerms.length === 0) {
+        return entries;
+      }
+
+      return entries.filter(entry => {
+        const searchableText = `${entry.content} ${entry.dateText}`.toLowerCase();
+
+        // Match if ANY term is found (OR logic)
+        return searchTerms.some(({ term, isExact }) => {
+          const lowerTerm = term.toLowerCase();
+
+          if (isExact) {
+            // Exact phrase match (case-insensitive)
+            return searchableText.includes(lowerTerm);
+          } else {
+            // Keyword match (case-insensitive)
+            return searchableText.includes(lowerTerm);
+          }
+        });
+      });
+    };
+
+    /**
+     * Highlight search keywords in text by wrapping them in <mark> tags
+     * @param {string} text - The text to highlight
+     * @param {Array<{term: string, isExact: boolean}>} searchTerms - Parsed search terms
+     * @returns {string} Text with <mark> tags around matched terms
+     */
+    const highlightKeywords = (text, searchTerms) => {
+      if (!text || !searchTerms || searchTerms.length === 0) {
+        return text;
+      }
+
+      let result = text;
+
+      // Sort terms by length (longest first) to avoid partial replacements
+      const sortedTerms = [...searchTerms].sort((a, b) => b.term.length - a.term.length);
+
+      sortedTerms.forEach(({ term }) => {
+        // Create a regex that matches the term case-insensitively
+        // Use word boundary for better matching, but allow partial matches too
+        const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
+        result = result.replace(regex, '<mark>$1</mark>');
+      });
+
+      return result;
+    };
+
+    /**
+     * Escape special regex characters
+     * @param {string} str - String to escape
+     * @returns {string} Escaped string
+     */
+    const escapeRegex = (str) => {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
+    /**
+     * Get context excerpt around the first occurrence of search terms
+     * @param {string} content - The full content
+     * @param {Array<{term: string, isExact: boolean}>} searchTerms - Parsed search terms
+     * @param {number} wordsAround - Number of words to show before/after the match
+     * @returns {string} Context excerpt with ellipsis if truncated
+     */
+    const getSearchContext = (content, searchTerms, wordsAround = 15) => {
+      if (!content || !searchTerms || searchTerms.length === 0) {
+        return content;
+      }
+
+      const lowerContent = content.toLowerCase();
+      let firstMatchIndex = -1;
+      let matchLength = 0;
+
+      // Find the first occurrence of any search term
+      searchTerms.forEach(({ term }) => {
+        const lowerTerm = term.toLowerCase();
+        const index = lowerContent.indexOf(lowerTerm);
+
+        if (index !== -1 && (firstMatchIndex === -1 || index < firstMatchIndex)) {
+          firstMatchIndex = index;
+          matchLength = term.length;
+        }
+      });
+
+      // If no match found, return original content (shouldn't happen as filterBySearch already matched)
+      if (firstMatchIndex === -1) {
+        return content;
+      }
+
+      // Split content into words while preserving positions
+      const words = content.split(/(\s+)/); // Include whitespace in the split
+      let charCount = 0;
+      let matchWordIndex = -1;
+
+      // Find which word index contains the match
+      for (let i = 0; i < words.length; i++) {
+        const wordLen = words[i].length;
+        if (charCount <= firstMatchIndex && firstMatchIndex < charCount + wordLen) {
+          matchWordIndex = i;
+          break;
+        }
+        charCount += wordLen;
+      }
+
+      if (matchWordIndex === -1) {
+        return content; // Fallback
+      }
+
+      // Count actual words (not whitespace)
+      const isWord = (w) => w.trim().length > 0;
+
+      // Find start position (wordsAround words before match)
+      let startIndex = matchWordIndex;
+      let wordsBefore = 0;
+      for (let i = matchWordIndex - 1; i >= 0 && wordsBefore < wordsAround; i--) {
+        if (isWord(words[i])) {
+          wordsBefore++;
+          startIndex = i;
+        }
+      }
+
+      // Find end position (wordsAround words after match)
+      let endIndex = matchWordIndex;
+      let wordsAfter = 0;
+      for (let i = matchWordIndex + 1; i < words.length && wordsAfter < wordsAround; i++) {
+        if (isWord(words[i])) {
+          wordsAfter++;
+          endIndex = i;
+        }
+      }
+
+      // Extract the excerpt
+      const excerpt = words.slice(startIndex, endIndex + 1).join('');
+
+      // Add ellipsis if truncated
+      const prefix = startIndex > 0 ? '...' : '';
+      const suffix = endIndex < words.length - 1 ? '...' : '';
+
+      return prefix + excerpt.trim() + suffix;
+    };
 
     const cleanDateText = (text) =>
       text
@@ -811,15 +1093,27 @@
       const fullText = entry.content;
       const maxLength = 260;
 
-      // Show the first few lines (up to 3) as the card preview
+      // Show search context excerpt if searching, otherwise show normal preview
       const updateText = () => {
-        const lines = fullText.split("\n");
-        const preview = lines.slice(0, 3).join("\n");
-        let text = preview;
-        if (text.length > maxLength) {
-          text = `${text.slice(0, maxLength).trim()}…`;
+        let text;
+
+        if (searchTerms.length > 0) {
+          // Get context excerpt around search term
+          text = getSearchContext(fullText, searchTerms, 15);
+          // Highlight keywords in the excerpt
+          const highlightedText = highlightKeywords(text, searchTerms);
+          paragraph.innerHTML = highlightedText;
+        } else {
+          // Normal preview: first few lines (up to 3)
+          const lines = fullText.split("\n");
+          const preview = lines.slice(0, 3).join("\n");
+          text = preview;
+          if (text.length > maxLength) {
+            text = `${text.slice(0, maxLength).trim()}…`;
+          }
+          paragraph.textContent = text;
         }
-        paragraph.textContent = text;
+
         paragraph.style.whiteSpace = "pre-wrap";
       };
 
@@ -851,18 +1145,37 @@ card.style.cursor = "pointer";
       modalTitleEl.textContent = entry.dateText || "Full entry";
       modalMetaEl.textContent = formatDate(entry.date, entry.dateText);
       // Clear previous content
-      modalBodyEl.textContent = "";
-      // Add content with preserved newlines (including empty lines for double breaks)
-      const lines = entry.content.split("\n");
-      lines.forEach((line, index) => {
-        if (index > 0) {
-          modalBodyEl.appendChild(document.createElement("br"));
-        }
-        // Add text node even if line is empty (for double <br> support)
-        if (line.length > 0) {
-          modalBodyEl.appendChild(document.createTextNode(line));
-        }
-      });
+      modalBodyEl.innerHTML = "";
+
+      if (searchTerms.length > 0) {
+        // Highlight keywords in full content
+        const lines = entry.content.split("\n");
+        lines.forEach((line, index) => {
+          if (index > 0) {
+            modalBodyEl.appendChild(document.createElement("br"));
+          }
+          // Highlight keywords in each line
+          if (line.length > 0) {
+            const highlightedLine = highlightKeywords(line, searchTerms);
+            const span = document.createElement("span");
+            span.innerHTML = highlightedLine;
+            modalBodyEl.appendChild(span);
+          }
+        });
+      } else {
+        // No search - show normal content
+        const lines = entry.content.split("\n");
+        lines.forEach((line, index) => {
+          if (index > 0) {
+            modalBodyEl.appendChild(document.createElement("br"));
+          }
+          // Add text node even if line is empty (for double <br> support)
+          if (line.length > 0) {
+            modalBodyEl.appendChild(document.createTextNode(line));
+          }
+        });
+      }
+
       entryModalEl.classList.add("is-open");
       entryModalEl.setAttribute("aria-hidden", "false");
     };
@@ -873,9 +1186,23 @@ card.style.cursor = "pointer";
     };
 
     const renderEntries = () => {
-      const visibleEntries = allEntries.filter(isWithinRange);
+      const noResultsEl = document.getElementById('noResultsMessage');
+      const noResultsTextEl = document.getElementById('noResultsText');
 
-      // Apply sorting
+      // Step 1: Get base entries based on search scope
+      let baseEntries;
+      if (searchTerms.length > 0 && searchScope === 'all') {
+        // Search all comments (ignore date filter)
+        baseEntries = allEntries;
+      } else {
+        // Apply date filter
+        baseEntries = allEntries.filter(isWithinRange);
+      }
+
+      // Step 2: Apply search filtering
+      let visibleEntries = filterBySearch(baseEntries, searchTerms);
+
+      // Step 3: Apply sorting
       const sortOrder = sortOrderEl ? sortOrderEl.value : 'newest';
       visibleEntries.sort((a, b) => {
         // Handle entries without dates (should be rare, but just in case)
@@ -891,17 +1218,43 @@ card.style.cursor = "pointer";
         }
       });
 
-      statusEl.textContent = `${visibleEntries.length} entries loaded.`;
+      // Step 4: Update status
+      if (searchTerms.length > 0) {
+        const totalCount = searchScope === 'all' ? allEntries.length : baseEntries.length;
+        statusEl.textContent = `${visibleEntries.length} of ${totalCount} comments match your search.`;
+      } else {
+        statusEl.textContent = `${visibleEntries.length} entries loaded.`;
+      }
 
+      // Step 5: Handle no results
       if (visibleEntries.length === 0) {
-        cardsEl.innerHTML = `
-          <div class="empty">
-            No entries match the selected date range.
-          </div>
-        `;
+        cardsEl.innerHTML = "";
+
+        if (searchTerms.length > 0) {
+          // Show search-specific no results message
+          noResultsEl.style.display = 'block';
+
+          if (searchScope === 'filtered') {
+            noResultsTextEl.textContent =
+              'No comments match your search within the selected date range. Try searching "All comments" to expand your search.';
+          } else {
+            noResultsTextEl.textContent =
+              'No comments match your search terms.';
+          }
+        } else {
+          // Show date filter no results message
+          noResultsEl.style.display = 'none';
+          cardsEl.innerHTML = `
+            <div class="empty">
+              No entries match the selected date range.
+            </div>
+          `;
+        }
         return;
       }
 
+      // Step 6: Hide no results message and render cards
+      noResultsEl.style.display = 'none';
       cardsEl.innerHTML = "";
       visibleEntries.forEach((entry) => {
         cardsEl.appendChild(createCard(entry));
@@ -912,6 +1265,15 @@ card.style.cursor = "pointer";
     resetFiltersBtn.addEventListener("click", () => {
       startDateEl.value = "";
       endDateEl.value = "";
+      searchInputEl.value = "";
+      searchTerms = [];
+      // Reset search scope to filtered
+      searchScopeEls.forEach(radio => {
+        if (radio.value === 'filtered') {
+          radio.checked = true;
+        }
+      });
+      searchScope = 'filtered';
       renderEntries();
     });
 
@@ -922,6 +1284,41 @@ card.style.cursor = "pointer";
         renderEntries();
       });
     }
+
+    // Debounce utility function
+    const debounce = (func, delay) => {
+      let timeoutId;
+      return function(...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+      };
+    };
+
+    // Handle search input with debounce (300ms is standard best practice)
+    const handleSearchInput = () => {
+      const query = searchInputEl.value;
+      searchTerms = parseSearchQuery(query);
+      renderEntries();
+    };
+
+    const debouncedSearch = debounce(handleSearchInput, 300);
+
+    if (searchInputEl) {
+      searchInputEl.addEventListener("input", debouncedSearch);
+    }
+
+    // Handle search scope changes
+    const handleSearchScopeChange = (e) => {
+      searchScope = e.target.value;
+      renderEntries();
+    };
+
+    if (searchScopeEls) {
+      searchScopeEls.forEach(radio => {
+        radio.addEventListener("change", handleSearchScopeChange);
+      });
+    }
+
     const fetchAndLoad = async (url, forceRefresh = false) => {
       const trimmed = url ? url.trim() : "";
       if (!trimmed) {
