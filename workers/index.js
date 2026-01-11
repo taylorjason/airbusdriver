@@ -126,7 +126,7 @@ export default {
 
     // Validate response content
     if (upstream.ok && !body.includes("Your CQ Line Pilot Comments")) {
-      console.error("Invalid response from upstream - expected marker not found");
+      // console.error("Invalid response from upstream - expected marker not found"); // Removed for prod
       return errorResponse("Invalid response from origin server", 502, origin);
     }
 
@@ -140,21 +140,24 @@ export default {
       "Cache-Control": shouldCache
         ? "public, max-age=86400"  // 24 hours for success
         : "no-cache, no-store",    // Don't cache errors
+        : "no-cache, no-store",    // Don't cache errors
       "X-Cached-At": new Date().toISOString(),
+        // Hint for compression (handled by Cloudflare usually, but good practice)
+        "Content-Encoding": "gzip", 
       ...buildCorsHeaders(origin),
-    };
+};
 
-    const response = new Response(body, {
-      status: upstream.status,
-      headers: responseHeaders,
-    });
+const response = new Response(body, {
+  status: upstream.status,
+  headers: responseHeaders,
+});
 
-    // Only store successful responses in cache
-    // Errors, rate limits, and server failures are not cached
-    if (shouldCache) {
-      await cache.put(cacheKey, response.clone());
-    }
+// Only store successful responses in cache
+// Errors, rate limits, and server failures are not cached
+if (shouldCache) {
+  await cache.put(cacheKey, response.clone());
+}
 
-    return response;
+return response;
   },
 };

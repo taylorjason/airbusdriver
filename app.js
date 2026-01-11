@@ -1,6 +1,14 @@
 const statusEl = document.getElementById("status");
 const cardsEl = document.getElementById("cards");
 
+// Logger configuration
+const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+const logger = {
+  log: (...args) => isDev && console.log(...args),
+  error: (...args) => console.error(...args), // Always log errors
+  warn: (...args) => isDev && console.warn(...args)
+};
+
 // New UI Elements
 const sortOrderEl = document.getElementById("sortOrder"); // Compact select
 const toggleDatePanelBtn = document.getElementById("toggleDatePanel");
@@ -195,7 +203,7 @@ const loadSortPreference = () => {
       sortOrderEl.value = savedSort;
     }
   } catch (e) {
-    console.error('[Sort] Failed to load sort preference:', e);
+    logger.error('[Sort] Failed to load sort preference:', e);
   }
 };
 
@@ -203,7 +211,7 @@ const saveSortPreference = (value) => {
   try {
     localStorage.setItem(SORT_PREFERENCE_KEY, value);
   } catch (e) {
-    console.error('[Sort] Failed to save sort preference:', e);
+    logger.error('[Sort] Failed to save sort preference:', e);
   }
 };
 
@@ -246,10 +254,10 @@ const saveToCache = (html, entries, sourceUrl) => {
     localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
     lastCachedTimestamp = cacheData.timestamp;
     updateCacheStatus();
-    console.log('[Cache] Data saved to localStorage');
+    logger.log('[Cache] Data saved to localStorage');
   } catch (e) {
     if (e.name === 'QuotaExceededError') {
-      console.warn('[Cache] Storage quota exceeded, clearing old cache');
+      logger.warn('[Cache] Storage quota exceeded, clearing old cache');
       clearCache();
       // Try again with fresh quota
       try {
@@ -262,12 +270,12 @@ const saveToCache = (html, entries, sourceUrl) => {
         localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
         lastCachedTimestamp = cacheData.timestamp;
         updateCacheStatus();
-        console.log('[Cache] Data saved to localStorage after clearing');
+        logger.log('[Cache] Data saved to localStorage after clearing');
       } catch (retryError) {
-        console.error('[Cache] Failed to save even after clearing:', retryError);
+        logger.error('[Cache] Failed to save even after clearing:', retryError);
       }
     } else {
-      console.error('[Cache] Failed to save to localStorage:', e);
+      logger.error('[Cache] Failed to save to localStorage:', e);
     }
   }
 };
@@ -295,13 +303,13 @@ const loadFromCache = () => {
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('airbusdriver_cache_') && key !== CACHE_KEY) {
         localStorage.removeItem(key);
-        console.log('[Cache] Removed old cache version:', key);
+        logger.log('[Cache] Removed old cache version:', key);
       }
     });
 
     const cached = localStorage.getItem(CACHE_KEY);
     if (!cached) {
-      console.log('[Cache] No cached data found');
+      logger.log('[Cache] No cached data found');
       return null;
     }
 
@@ -309,7 +317,7 @@ const loadFromCache = () => {
 
     // Validate cache structure with strict validation
     if (!validateCacheData(cacheData)) {
-      console.log('[Cache] Invalid cache structure, clearing cache');
+      logger.log('[Cache] Invalid cache structure, clearing cache');
       clearCache();
       return null;
     }
@@ -317,7 +325,7 @@ const loadFromCache = () => {
     // Check if cache is expired
     const age = Date.now() - cacheData.timestamp;
     if (age > CACHE_EXPIRATION_MS) {
-      console.log('[Cache] Cache expired (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
+      logger.log('[Cache] Cache expired (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
       return null;
     }
 
@@ -327,11 +335,11 @@ const loadFromCache = () => {
       date: entry.date ? new Date(entry.date) : null
     }));
 
-    console.log('[Cache] Using cached data (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
+    logger.log('[Cache] Using cached data (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
     lastCachedTimestamp = cacheData.timestamp;
     return cacheData;
   } catch (e) {
-    console.error('[Cache] Failed to load from localStorage:', e);
+    logger.error('[Cache] Failed to load from localStorage:', e);
     clearCache();
     return null;
   }
@@ -341,9 +349,9 @@ const clearCache = () => {
   try {
     localStorage.removeItem(CACHE_KEY);
     lastCachedTimestamp = null;
-    console.log('[Cache] Cache cleared');
+    logger.log('[Cache] Cache cleared');
   } catch (e) {
-    console.error('[Cache] Failed to clear cache:', e);
+    logger.error('[Cache] Failed to clear cache:', e);
   }
 };
 
@@ -353,10 +361,13 @@ const checkDoubleRefresh = () => {
     const lastFetchTime = sessionStorage.getItem('lastFetchTime');
     const now = Date.now();
 
+    // Cleanup old sessions (optional, but good for hygiene if we stored more)
+    // For now just reading/writing single key. 
+
     if (lastFetchTime) {
       const timeSinceLastFetch = now - parseInt(lastFetchTime, 10);
       if (timeSinceLastFetch < DOUBLE_REFRESH_THRESHOLD_MS) {
-        console.log('[Cache] Double-refresh detected! Forcing cache bypass.');
+        logger.log('[Cache] Double-refresh detected! Forcing cache bypass.');
         return true;
       }
     }
@@ -364,7 +375,7 @@ const checkDoubleRefresh = () => {
     sessionStorage.setItem('lastFetchTime', now.toString());
     return false;
   } catch (e) {
-    console.error('[Cache] Failed to check double-refresh:', e);
+    logger.error('[Cache] Failed to check double-refresh:', e);
     return false;
   }
 };
@@ -1031,7 +1042,7 @@ const loadPdfLibraries = async () => {
     pdfLibrariesLoaded = true;
     return true;
   } catch (error) {
-    console.error('[Export] Failed to load PDF libraries:', error);
+    logger.error('[Export] Failed to load PDF libraries:', error);
     alert('Failed to load PDF library. Please refresh and try again.');
     return false;
   } finally {
@@ -1045,7 +1056,7 @@ let isExportingPdf = false;
 
 const exportToCsv = (entries) => {
   if (isExportingCsv) {
-    console.log('[Export] CSV export already in progress');
+    logger.log('[Export] CSV export already in progress');
     return;
   }
 
@@ -1088,7 +1099,7 @@ const exportToCsv = (entries) => {
 
 const exportToPdf = async (entries) => {
   if (isExportingPdf) {
-    console.log('[Export] PDF export already in progress');
+    logger.log('[Export] PDF export already in progress');
     return;
   }
 
@@ -1174,7 +1185,7 @@ const exportToPdf = async (entries) => {
 
     doc.save(`cq_comments_export_${new Date().toISOString().slice(0, 10)}.pdf`);
   } catch (error) {
-    console.error('[Export] PDF generation failed:', error);
+    logger.error('[Export] PDF generation failed:', error);
     alert('Failed to generate PDF. Please try again.');
   } finally {
     // Reset flag after a short delay
@@ -1435,7 +1446,8 @@ const handleSearchInput = () => {
   updateBadges();
 };
 
-const debouncedSearch = debounce(handleSearchInput, 300);
+const DEBOUNCE_DELAY_MS = 300;
+const debouncedSearch = debounce(handleSearchInput, DEBOUNCE_DELAY_MS);
 
 if (searchInputEl) {
   searchInputEl.addEventListener("input", debouncedSearch);
@@ -1469,7 +1481,7 @@ const fetchAndLoad = async (url, forceRefresh = false) => {
   if (!forceRefresh) {
     const cached = loadFromCache();
     if (cached && cached.sourceUrl === trimmed) {
-      console.log('[Cache] Loading from cache');
+      logger.log('[Cache] Loading from cache');
       manualHtmlEl.value = cached.html;
       allEntries = cached.entries;
       renderEntries();
@@ -1479,7 +1491,7 @@ const fetchAndLoad = async (url, forceRefresh = false) => {
   }
 
   // Cache miss or force refresh - fetch from network
-  console.log('[Cache] Fetching from network' + (forceRefresh ? ' (forced)' : ''));
+  logger.log('[Cache] Fetching from network' + (forceRefresh ? ' (forced)' : ''));
   statusEl.textContent = "Fetching HTML…";
 
   try {
@@ -1491,7 +1503,7 @@ const fetchAndLoad = async (url, forceRefresh = false) => {
     return;
   } catch (error) {
     statusEl.textContent = `${describeFetchError(error, trimmed)} Attempting proxy fetch…`;
-    console.error(error);
+    logger.error(error);
     try {
       const html = await fetchWithProxy(trimmed, forceRefresh);
       manualHtmlEl.value = html;
@@ -1501,7 +1513,7 @@ const fetchAndLoad = async (url, forceRefresh = false) => {
       return;
     } catch (proxyError) {
       statusEl.textContent = `${describeFetchError(proxyError, buildProxyUrl(PROXY_URL, trimmed) || "proxy URL")} Paste the HTML source instead.`;
-      console.error(proxyError);
+      logger.error(proxyError);
     }
   }
 };
@@ -1518,7 +1530,7 @@ window.addEventListener("load", () => {
       fetchAndLoad(url);
     }
   } catch (e) {
-    console.error("Auto-fetch failed:", e);
+    logger.error("Auto-fetch failed:", e);
   }
 });
 parseHtmlBtn.addEventListener("click", () => {
@@ -1586,7 +1598,7 @@ const checkAndShowDisclaimer = () => {
       disclaimerModalEl.setAttribute("aria-hidden", "true");
     }
   } catch (e) {
-    console.error('[Disclaimer] Failed to check disclaimer status:', e);
+    logger.error('[Disclaimer] Failed to check disclaimer status:', e);
   }
 };
 
@@ -1594,7 +1606,7 @@ const closeDisclaimer = () => {
   try {
     localStorage.setItem(DISCLAIMER_KEY, "true");
   } catch (e) {
-    console.error('[Disclaimer] Failed to save disclaimer acceptance:', e);
+    logger.error('[Disclaimer] Failed to save disclaimer acceptance:', e);
   } finally {
     // Always close the modal, even if localStorage fails
     disclaimerModalEl.classList.remove("is-open");
