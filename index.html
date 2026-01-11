@@ -768,19 +768,14 @@
         return text;
       }
 
-      let result = text;
+      // Create a combined regex pattern that matches any of the search terms
+      // This prevents the issue where highlighting one term corrupts markup from previous terms
+      const escapedTerms = searchTerms.map(({ term }) => escapeRegex(term));
+      const combinedPattern = escapedTerms.join('|');
+      const regex = new RegExp(`(${combinedPattern})`, 'gi');
 
-      // Sort terms by length (longest first) to avoid partial replacements
-      const sortedTerms = [...searchTerms].sort((a, b) => b.term.length - a.term.length);
-
-      sortedTerms.forEach(({ term }) => {
-        // Create a regex that matches the term case-insensitively
-        // Use word boundary for better matching, but allow partial matches too
-        const regex = new RegExp(`(${escapeRegex(term)})`, 'gi');
-        result = result.replace(regex, '<mark>$1</mark>');
-      });
-
-      return result;
+      // Replace all matches in a single pass
+      return text.replace(regex, '<mark>$1</mark>');
     };
 
     /**
