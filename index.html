@@ -13,6 +13,48 @@
       --muted: #5d657a;
       --accent: #2f6fed;
       --border: #e2e6f0;
+      --header-gradient-start: #1d4ed8;
+      --header-gradient-end: #3b82f6;
+      --modal-overlay: rgba(15, 23, 42, 0.55);
+      --card-shadow: rgba(15, 23, 42, 0.06);
+      --controls-shadow: rgba(15, 23, 42, 0.12);
+      --modal-shadow: rgba(15, 23, 42, 0.25);
+      --highlight-bg: #fef08a;
+      --highlight-text: #854d0e;
+      --error-bg: #fef2f2;
+      --error-border: #fca5a5;
+      --error-title: #991b1b;
+      --error-text: #7f1d1d;
+      --tag-bg: #e0ecff;
+      --tag-text: #1d4ed8;
+      --secondary-btn-bg: #e2e8f0;
+      --secondary-btn-text: #1e293b;
+    }
+
+    :root[data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --border: #334155;
+      --header-gradient-start: #1e3a8a;
+      --header-gradient-end: #2563eb;
+      --modal-overlay: rgba(0, 0, 0, 0.7);
+      --card-shadow: rgba(0, 0, 0, 0.2);
+      --controls-shadow: rgba(0, 0, 0, 0.3);
+      --modal-shadow: rgba(0, 0, 0, 0.5);
+      --highlight-bg: #854d0e;
+      --highlight-text: #fef08a;
+      --error-bg: #450a0a;
+      --error-border: #7f1d1d;
+      --error-title: #fca5a5;
+      --error-text: #fca5a5;
+      --tag-bg: #1e3a8a;
+      --tag-text: #93c5fd;
+      --secondary-btn-bg: #334155;
+      --secondary-btn-text: #e2e8f0;
     }
 
     * {
@@ -28,7 +70,7 @@
 
     header {
       padding: 32px 24px 12px;
-      background: linear-gradient(120deg, #1d4ed8, #3b82f6);
+      background: linear-gradient(120deg, var(--header-gradient-start), var(--header-gradient-end));
       color: #fff;
     }
 
@@ -51,35 +93,35 @@
     .controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 16px;
+      gap: 12px;
       align-items: end;
       background: var(--card);
       border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 20px;
+      border-radius: 12px;
+      padding: 16px;
       margin-top: -40px;
-      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+      box-shadow: 0 12px 32px var(--controls-shadow);
     }
 
     .control-group {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      min-width: 200px;
+      gap: 4px;
+      min-width: 160px;
       flex: 1;
     }
 
     .control-group label {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       color: var(--muted);
     }
 
     .control-group input,
     .control-group select {
-      padding: 10px 12px;
-      border-radius: 10px;
+      padding: 8px 10px;
+      border-radius: 8px;
       border: 1px solid var(--border);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
     .actions {
@@ -121,15 +163,16 @@
       border: none;
       background: var(--accent);
       color: #fff;
-      padding: 10px 16px;
-      border-radius: 10px;
+      padding: 8px 14px;
+      border-radius: 8px;
       font-weight: 600;
+      font-size: 0.9rem;
       cursor: pointer;
     }
 
     button.secondary {
-      background: #e2e8f0;
-      color: #1e293b;
+      background: var(--secondary-btn-bg);
+      color: var(--secondary-btn-text);
     }
 
     button:disabled {
@@ -157,13 +200,13 @@
       display: flex;
       flex-direction: column;
       gap: 12px;
-      box-shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
+      box-shadow: 0 8px 20px var(--card-shadow);
     }
 
     .card h3 {
       margin: 0;
       font-size: 1rem;
-      color: #0f172a;
+      color: var(--text);
     }
 
     .card time {
@@ -173,13 +216,13 @@
 
     .card p {
       margin: 0;
-      color: #1e293b;
+      color: var(--text);
       line-height: 1.5;
     }
 
     .tag {
-      background: #e0ecff;
-      color: #1d4ed8;
+      background: var(--tag-bg);
+      color: var(--tag-text);
       font-weight: 600;
       padding: 4px 10px;
       border-radius: 999px;
@@ -199,7 +242,7 @@
     .modal {
       position: fixed;
       inset: 0;
-      background: rgba(15, 23, 42, 0.55);
+      background: var(--modal-overlay);
       display: none;
       align-items: center;
       justify-content: center;
@@ -220,7 +263,7 @@
       display: flex;
       flex-direction: column;
       border: 1px solid var(--border);
-      box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+      box-shadow: 0 20px 50px var(--modal-shadow);
     }
 
     .modal-header {
@@ -235,7 +278,7 @@
     .modal-header h2 {
       margin: 0;
       font-size: 1.2rem;
-      color: #0f172a;
+      color: var(--text);
     }
 
     .modal-body {
@@ -246,7 +289,7 @@
     .modal-body p {
       white-space: pre-wrap;
       line-height: 1.65;
-      color: #1e293b;
+      color: var(--text);
     }
 
     .modal-close {
@@ -254,6 +297,18 @@
       color: var(--muted);
       font-size: 1.2rem;
       padding: 0;
+    }
+
+    .modal-footer {
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .disclaimer-modal-content {
+      max-width: 500px;
     }
 
     .modal-meta {
@@ -306,22 +361,22 @@
     .radio-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 6px;
     }
 
     .radio-label {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
       cursor: pointer;
-      font-size: 0.95rem;
+      font-size: 0.85rem;
       color: var(--text);
     }
 
     .radio-label input[type="radio"] {
       cursor: pointer;
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
     }
 
     .radio-label span {
@@ -329,8 +384,8 @@
     }
 
     mark {
-      background-color: #fef08a;
-      color: #854d0e;
+      background-color: var(--highlight-bg);
+      color: var(--highlight-text);
       padding: 2px 4px;
       border-radius: 3px;
       font-weight: 600;
@@ -339,8 +394,8 @@
     .no-results {
       margin: 20px 0;
       padding: 32px 24px;
-      background: #fef2f2;
-      border: 2px solid #fca5a5;
+      background: var(--error-bg);
+      border: 2px solid var(--error-border);
       border-radius: 16px;
       text-align: center;
     }
@@ -354,19 +409,54 @@
       margin: 0 0 12px;
       font-size: 1.2rem;
       font-weight: 700;
-      color: #991b1b;
+      color: var(--error-title);
     }
 
     .no-results-text {
       margin: 0;
       font-size: 0.95rem;
-      color: #7f1d1d;
+      color: var(--error-text);
       line-height: 1.6;
     }
 
     .search-group {
       flex: 2;
-      min-width: 250px;
+      min-width: 200px;
+    }
+
+    .theme-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 16px;
+      padding: 12px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .theme-toggle-btn {
+      background: var(--border);
+      color: var(--text);
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .theme-toggle-btn:hover {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .theme-toggle-btn.active {
+      background: var(--accent);
+      color: #fff;
     }
 
     @media (max-width: 600px) {
@@ -463,6 +553,12 @@
     <footer class="cache-info">
       <div id="cacheStatus" class="cache-status"></div>
       <button id="refreshDataBtn" class="refresh-btn" style="display: none;">Refresh Data</button>
+      <div class="theme-toggle">
+        <span>Theme:</span>
+        <button class="theme-toggle-btn" id="themeAuto">Auto</button>
+        <button class="theme-toggle-btn" id="themeLight">Light</button>
+        <button class="theme-toggle-btn" id="themeDark">Dark</button>
+      </div>
     </footer>
   </main>
 
@@ -479,6 +575,20 @@
       </div>
       <div class="modal-body">
         <p id="modalBody"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="disclaimerModal" aria-hidden="false">
+    <div class="modal-content disclaimer-modal-content" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
+      <div class="modal-header">
+        <h2 id="disclaimerTitle">Welcome</h2>
+      </div>
+      <div class="modal-body">
+        <p>This site is simply a modern mobile-friendly viewer for the AirBusDriver.net CQ comments. All comments are pulled directly from the original site without modification.</p>
+      </div>
+      <div class="modal-footer">
+        <button id="disclaimerAccept">I understand</button>
       </div>
     </div>
   </div>
@@ -1422,6 +1532,140 @@ card.style.cursor = "pointer";
 
     // Update cache status every minute
     setInterval(updateCacheStatus, 60000);
+
+    // Disclaimer modal handling
+    const DISCLAIMER_KEY = "airbusdriver_disclaimer_accepted";
+    const disclaimerModalEl = document.getElementById("disclaimerModal");
+    const disclaimerAcceptBtn = document.getElementById("disclaimerAccept");
+
+    const checkAndShowDisclaimer = () => {
+      try {
+        const accepted = localStorage.getItem(DISCLAIMER_KEY);
+        if (!accepted) {
+          // Show the modal
+          disclaimerModalEl.classList.add("is-open");
+          disclaimerModalEl.setAttribute("aria-hidden", "false");
+        } else {
+          // Hide the modal
+          disclaimerModalEl.classList.remove("is-open");
+          disclaimerModalEl.setAttribute("aria-hidden", "true");
+        }
+      } catch (e) {
+        console.error('[Disclaimer] Failed to check disclaimer status:', e);
+      }
+    };
+
+    const closeDisclaimer = () => {
+      try {
+        localStorage.setItem(DISCLAIMER_KEY, "true");
+      } catch (e) {
+        console.error('[Disclaimer] Failed to save disclaimer acceptance:', e);
+      } finally {
+        // Always close the modal, even if localStorage fails
+        disclaimerModalEl.classList.remove("is-open");
+        disclaimerModalEl.setAttribute("aria-hidden", "true");
+      }
+    };
+
+    // Check on page load
+    checkAndShowDisclaimer();
+
+    // Handle accept button
+    if (disclaimerAcceptBtn) {
+      disclaimerAcceptBtn.addEventListener("click", closeDisclaimer);
+    }
+
+    // Theme management
+    const THEME_KEY = "airbusdriver_theme_preference";
+    const themeAutoBtn = document.getElementById("themeAuto");
+    const themeLightBtn = document.getElementById("themeLight");
+    const themeDarkBtn = document.getElementById("themeDark");
+
+    const getSystemPreference = () => {
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark';
+      }
+      return 'light';
+    };
+
+    const applyTheme = (theme) => {
+      const root = document.documentElement;
+
+      if (theme === 'auto') {
+        const systemTheme = getSystemPreference();
+        root.setAttribute('data-theme', systemTheme);
+      } else {
+        root.setAttribute('data-theme', theme);
+      }
+
+      // Update active button state
+      [themeAutoBtn, themeLightBtn, themeDarkBtn].forEach(btn => {
+        btn.classList.remove('active');
+      });
+
+      if (theme === 'auto') {
+        themeAutoBtn.classList.add('active');
+      } else if (theme === 'light') {
+        themeLightBtn.classList.add('active');
+      } else if (theme === 'dark') {
+        themeDarkBtn.classList.add('active');
+      }
+    };
+
+    const loadThemePreference = () => {
+      try {
+        const savedTheme = localStorage.getItem(THEME_KEY);
+        return savedTheme || 'auto'; // Default to auto
+      } catch (e) {
+        console.error('[Theme] Failed to load theme preference:', e);
+        return 'auto';
+      }
+    };
+
+    const saveThemePreference = (theme) => {
+      try {
+        localStorage.setItem(THEME_KEY, theme);
+      } catch (e) {
+        console.error('[Theme] Failed to save theme preference:', e);
+      }
+    };
+
+    // Apply saved theme on load
+    const initialTheme = loadThemePreference();
+    applyTheme(initialTheme);
+
+    // Handle theme button clicks
+    if (themeAutoBtn) {
+      themeAutoBtn.addEventListener('click', () => {
+        saveThemePreference('auto');
+        applyTheme('auto');
+      });
+    }
+
+    if (themeLightBtn) {
+      themeLightBtn.addEventListener('click', () => {
+        saveThemePreference('light');
+        applyTheme('light');
+      });
+    }
+
+    if (themeDarkBtn) {
+      themeDarkBtn.addEventListener('click', () => {
+        saveThemePreference('dark');
+        applyTheme('dark');
+      });
+    }
+
+    // Listen for system theme changes when in auto mode
+    if (window.matchMedia) {
+      const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      darkModeQuery.addEventListener('change', () => {
+        const currentTheme = loadThemePreference();
+        if (currentTheme === 'auto') {
+          applyTheme('auto');
+        }
+      });
+    }
   </script>
 </body>
 </html>
