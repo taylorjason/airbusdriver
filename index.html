@@ -1558,10 +1558,12 @@ card.style.cursor = "pointer";
     const closeDisclaimer = () => {
       try {
         localStorage.setItem(DISCLAIMER_KEY, "true");
-        disclaimerModalEl.classList.remove("is-open");
-        disclaimerModalEl.setAttribute("aria-hidden", "true");
       } catch (e) {
         console.error('[Disclaimer] Failed to save disclaimer acceptance:', e);
+      } finally {
+        // Always close the modal, even if localStorage fails
+        disclaimerModalEl.classList.remove("is-open");
+        disclaimerModalEl.setAttribute("aria-hidden", "true");
       }
     };
 
