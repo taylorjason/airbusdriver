@@ -240,15 +240,19 @@ const DOUBLE_REFRESH_THRESHOLD_MS = 15 * 1000; // 15 seconds
 
 // localStorage cache functions
 const saveToCache = (html, entries, sourceUrl) => {
+  // Always update in-memory state first so UI reflects "Fresh" status
+  // even if localStorage writes fail (e.g. quota exceeded, incognito mode)
+  const timestamp = Date.now();
+  lastCachedTimestamp = timestamp;
+  updateCacheStatus();
+
   try {
     const cacheData = {
       entries,
-      timestamp: Date.now(),
+      timestamp,
       sourceUrl
     };
     localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-    lastCachedTimestamp = cacheData.timestamp;
-    updateCacheStatus();
     logger.log('[Cache] Data saved to localStorage');
   } catch (e) {
     if (e.name === 'QuotaExceededError') {
@@ -258,12 +262,10 @@ const saveToCache = (html, entries, sourceUrl) => {
       try {
         const cacheData = {
           entries,
-          timestamp: Date.now(),
+          timestamp,
           sourceUrl
         };
         localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
-        lastCachedTimestamp = cacheData.timestamp;
-        updateCacheStatus();
         logger.log('[Cache] Data saved to localStorage after clearing');
       } catch (retryError) {
         logger.error('[Cache] Failed to save even after clearing:', retryError);
@@ -392,12 +394,12 @@ const updateCacheStatus = () => {
         ageText += ` ${minutes} min`;
       }
     } else if (minutes > 0) {
-      ageText = `${minutes} minute${minutes !== 1 ? 's' : ''}`;
+      ageText = `${minutes} minute${minutes !== 1 ? 's' : ''} ago`;
     } else {
       ageText = 'just now';
     }
 
-    cacheStatusEl.textContent = `Last updated: ${ageText} ago`;
+    cacheStatusEl.textContent = `Last updated: ${ageText}`;
     if (refreshBtn) {
       refreshBtn.style.display = 'inline-block';
     }
