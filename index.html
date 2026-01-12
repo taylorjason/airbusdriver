@@ -117,24 +117,9 @@
         </div>
       </div>
     </section>
-    <section class="manual-input">
-      <div class="control-group">
-        <label for="sourceUrl">Fetch HTML from a URL (optional)</label>
-        <input type="url" id="sourceUrl" placeholder="http://www.airbusdriver.net/airbus_CQT_Intel.htm"
-          value="http://www.airbusdriver.net/airbus_CQT_Intel.htm" />
-        <small class="status">If the request is blocked by CORS, download the HTML and paste it below.</small>
-      </div>
-      <div class="actions">
-        <button id="fetchUrl" class="secondary">Fetch URL</button>
-      </div>
-      <div class="control-group">
-        <label for="manualHtml">Paste HTML from the target page</label>
-        <textarea id="manualHtml"
-          placeholder="Paste the HTML source for http://www.airbusdriver.net/airbus_CQT_Intel.htm"></textarea>
-      </div>
-      <div class="actions">
-        <button id="parseHtml" class="secondary">Parse pasted HTML</button>
-      </div>
+    <section class="manual-input" style="display: none;">
+      <!-- Hidden: URL fetching is now handled automatically implicitly via app.js auto-load. Manual paste is removed. -->
+      <input type="hidden" id="sourceUrl" value="http://www.airbusdriver.net/airbus_CQT_Intel.htm" />
     </section>
 
     <div class="status" id="status">Paste the HTML source to load entries.</div>
