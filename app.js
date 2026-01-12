@@ -30,11 +30,7 @@ const clearSearchBtn = document.getElementById("clearSearch");
 const searchBadgeEl = document.getElementById("searchBadge");
 const searchScopeEls = document.getElementsByName("searchScope");
 
-const fetchUrlBtn = document.getElementById("fetchUrl");
 const sourceUrlEl = document.getElementById("sourceUrl");
-const parseHtmlBtn = document.getElementById("parseHtml");
-const manualHtmlEl = document.getElementById("manualHtml");
-
 // --- Custom Date Picker Logic ---
 
 const MONTH_NAMES = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -252,7 +248,6 @@ const saveToCache = (html, entries, sourceUrl) => {
 
   try {
     const cacheData = {
-      html,
       entries,
       timestamp,
       sourceUrl
@@ -266,7 +261,6 @@ const saveToCache = (html, entries, sourceUrl) => {
       // Try again with fresh quota
       try {
         const cacheData = {
-          html,
           entries,
           timestamp,
           sourceUrl
@@ -285,7 +279,6 @@ const saveToCache = (html, entries, sourceUrl) => {
 const validateCacheData = (data) => {
   if (!data || typeof data !== 'object') return false;
   if (!data.timestamp || typeof data.timestamp !== 'number') return false;
-  if (!data.html || typeof data.html !== 'string') return false;
   if (!data.sourceUrl || typeof data.sourceUrl !== 'string') return false;
   if (!Array.isArray(data.entries)) return false;
 
@@ -1538,7 +1531,6 @@ const fetchAndLoad = async (url, forceRefresh = false) => {
     const cached = loadFromCache();
     if (cached && cached.sourceUrl === trimmed) {
       logger.log('[Cache] Loading from cache');
-      manualHtmlEl.value = cached.html;
       allEntries = cached.entries;
       renderEntries();
       updateCacheStatus();
@@ -1552,7 +1544,6 @@ const fetchAndLoad = async (url, forceRefresh = false) => {
 
   try {
     const html = await fetchHtmlFromUrl(trimmed);
-    manualHtmlEl.value = html;
     allEntries = parseEntriesFromHtml(html);
     saveToCache(html, allEntries, trimmed);
     renderEntries();
@@ -1562,42 +1553,18 @@ const fetchAndLoad = async (url, forceRefresh = false) => {
     logger.error(error);
     try {
       const html = await fetchWithProxy(trimmed, forceRefresh);
-      manualHtmlEl.value = html;
       allEntries = parseEntriesFromHtml(html);
       saveToCache(html, allEntries, trimmed);
       renderEntries();
       return;
     } catch (proxyError) {
-      statusEl.textContent = `${describeFetchError(proxyError, buildProxyUrl(PROXY_URL, trimmed) || "proxy URL")} Paste the HTML source instead.`;
+      statusEl.textContent = `${describeFetchError(proxyError, buildProxyUrl(PROXY_URL, trimmed) || "proxy URL")}`;
       logger.error(proxyError);
     }
   }
 };
 
-fetchUrlBtn.addEventListener("click", async () => {
-  await fetchAndLoad(sourceUrlEl.value);
-});
 
-// Auto-fetch on page load using the configured source URL
-window.addEventListener("load", () => {
-  try {
-    const url = sourceUrlEl && sourceUrlEl.value ? sourceUrlEl.value.trim() : "";
-    if (url) {
-      fetchAndLoad(url);
-    }
-  } catch (e) {
-    logger.error("Auto-fetch failed:", e);
-  }
-});
-parseHtmlBtn.addEventListener("click", () => {
-  const html = manualHtmlEl.value.trim();
-  if (!html) {
-    statusEl.textContent = "Paste the HTML source to parse it.";
-    return;
-  }
-  allEntries = parseEntriesFromHtml(html);
-  renderEntries();
-});
 closeModalBtn.addEventListener("click", closeModal);
 entryModalEl.addEventListener("click", (event) => {
   if (event.target === entryModalEl) {
@@ -1610,17 +1577,28 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// Refresh button handler
 const refreshDataBtn = document.getElementById('refreshDataBtn');
 if (refreshDataBtn) {
   refreshDataBtn.addEventListener('click', async () => {
     const url = sourceUrlEl && sourceUrlEl.value ? sourceUrlEl.value.trim() : "";
     if (url) {
-      clearCache();
+      // clearCache(); // Don't clear immediately, let fetchAndLoad handle it or overwrite
       await fetchAndLoad(url, true); // Force refresh
     }
   });
 }
+
+// Auto-fetch on page load using the configured source URL
+window.addEventListener("load", () => {
+  try {
+    const url = sourceUrlEl && sourceUrlEl.value ? sourceUrlEl.value.trim() : "";
+    if (url) {
+      fetchAndLoad(url);
+    }
+  } catch (e) {
+    logger.error("Auto-fetch failed:", e);
+  }
+});
 
 // Update cache status every minute, but only when page is visible
 setInterval(() => {

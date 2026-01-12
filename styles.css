@@ -343,34 +343,7 @@
     flex-wrap: wrap;
   }
 
-  .manual-input {
-    margin-top: 16px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    padding: 16px;
-    display: none !important;
-    gap: 12px;
-  }
 
-  .manual-input textarea {
-    width: 100%;
-    min-height: 160px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    padding: 12px;
-    font-family: "SFMono-Regular", "Menlo", "Consolas", monospace;
-    font-size: 0.85rem;
-    resize: vertical;
-  }
-
-  .manual-input input[type="url"] {
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    font-size: 0.95rem;
-    width: 100%;
-  }
 
   button {
     border: none;
