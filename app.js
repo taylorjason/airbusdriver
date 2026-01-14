@@ -292,7 +292,7 @@ const validateCacheData = (data) => {
   return true;
 };
 
-const loadFromCache = () => {
+const loadFromCache = (allowStale = false) => {
   try {
     // Clean up old cache versions
     Object.keys(localStorage).forEach(key => {
@@ -317,18 +317,23 @@ const loadFromCache = () => {
       return null;
     }
 
-    // Check if cache is expired
-    const age = Date.now() - cacheData.timestamp;
-    if (age > CACHE_EXPIRATION_MS) {
-      logger.log('[Cache] Cache expired (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
-      return null;
-    }
-
     // Rehydrate Date objects (JSON.stringify converts them to strings)
     cacheData.entries = cacheData.entries.map(entry => ({
       ...entry,
       date: entry.date ? new Date(entry.date) : null
     }));
+
+    // Check if cache is expired
+    const age = Date.now() - cacheData.timestamp;
+    if (age > CACHE_EXPIRATION_MS) {
+      if (allowStale) {
+        logger.log('[Cache] Returning stale data (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
+        lastCachedTimestamp = cacheData.timestamp; // Allow UI to show age
+        return { ...cacheData, stale: true };
+      }
+      logger.log('[Cache] Cache expired (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
+      return null;
+    }
 
     logger.log('[Cache] Using cached data (age: ' + Math.round(age / 1000 / 60) + ' minutes)');
     lastCachedTimestamp = cacheData.timestamp;
@@ -1526,40 +1531,89 @@ const fetchAndLoad = async (url, forceRefresh = false) => {
     forceRefresh = checkDoubleRefresh();
   }
 
+  let usingStaleData = false;
+
   // Try to load from cache if not forcing refresh
   if (!forceRefresh) {
-    const cached = loadFromCache();
+    const cached = loadFromCache(true); // Allow stale data
     if (cached && cached.sourceUrl === trimmed) {
-      logger.log('[Cache] Loading from cache');
+      if (!cached.stale) {
+        logger.log('[Cache] Loading from fresh cache');
+        allEntries = cached.entries;
+        renderEntries();
+        updateCacheStatus();
+        return;
+      }
+
+      // Stale data found - use it (Optimistic UI)
+      logger.log('[Cache] Rendering stale data while fetching fresh');
+      usingStaleData = true;
       allEntries = cached.entries;
       renderEntries();
-      updateCacheStatus();
-      return;
+      updateCacheStatus(); // Show "Last updated: X hours ago"
+
+      // Update UI to show we are refreshing in background
+      if (statusEl) {
+        // Append update indicator to whatever renderEntries put there
+        const existingContent = statusEl.innerHTML;
+        statusEl.innerHTML = `
+          <span style="color: var(--primary-color); font-weight: bold;">↻ Updating data...</span>
+          <span>(Showing cached copy)</span>
+          ${existingContent}
+        `;
+      }
     }
   }
 
-  // Cache miss or force refresh - fetch from network
-  logger.log('[Cache] Fetching from network' + (forceRefresh ? ' (forced)' : ''));
-  statusEl.textContent = "Fetching HTML…";
+  // Cache miss, force refresh, or stale data background update
+  if (!usingStaleData) {
+    logger.log('[Cache] Fetching from network' + (forceRefresh ? ' (forced)' : ''));
+    statusEl.textContent = "Fetching HTML…";
+  } else {
+    logger.log('[Cache] Background updating from network');
+  }
 
   try {
     const html = await fetchHtmlFromUrl(trimmed);
     allEntries = parseEntriesFromHtml(html);
     saveToCache(html, allEntries, trimmed);
     renderEntries();
+
+    // Explicit success message if we were updating in background
+    if (usingStaleData) {
+      // Briefly show success before returning to standard status
+      statusEl.textContent = "Data updated successfully.";
+      setTimeout(() => renderEntries(), 2500);
+    }
     return;
   } catch (error) {
-    statusEl.textContent = `${describeFetchError(error, trimmed)} Attempting proxy fetch…`;
+    if (!usingStaleData) {
+      statusEl.textContent = `${describeFetchError(error, trimmed)} Attempting proxy fetch…`;
+    }
     logger.error(error);
     try {
       const html = await fetchWithProxy(trimmed, forceRefresh);
       allEntries = parseEntriesFromHtml(html);
       saveToCache(html, allEntries, trimmed);
       renderEntries();
+
+      if (usingStaleData) {
+        statusEl.textContent = "Data updated successfully.";
+        setTimeout(() => renderEntries(), 2500);
+      }
       return;
     } catch (proxyError) {
-      statusEl.textContent = `${describeFetchError(proxyError, buildProxyUrl(PROXY_URL, trimmed) || "proxy URL")}`;
-      logger.error(proxyError);
+      // If we have stale data visible, let the user know update failed but keep data
+      if (usingStaleData) {
+        statusEl.innerHTML = `
+          <span style="color: var(--error-color)">⚠ Update failed. Showing cached data.</span>
+          ${statusEl.innerHTML} 
+        `;
+        logger.error('[Cache] Background update failed:', proxyError);
+      } else {
+        statusEl.textContent = `${describeFetchError(proxyError, buildProxyUrl(PROXY_URL, trimmed) || "proxy URL")}`;
+        logger.error(proxyError);
+      }
     }
   }
 };
